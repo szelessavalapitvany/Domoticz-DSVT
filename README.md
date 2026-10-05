@@ -295,6 +295,375 @@ Testing on other Linux-based Domoticz systems is welcome.
 
 Clone the repository into the Domoticz plugin directory:
 
+cd /etc/domoticz/plugins
+git clone https://github.com/szelessavalapitvany/Domoticz-DSVT.git DSVT_HMV_ZONE_12
+cp -r /etc/domoticz/plugins/DSVT_HMV_ZONE_12/viewer/* /usr/share/domoticz/www/templates/
+
+Detailed information: https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
+
+
+# DSVT – intelligens fűtés-, hűtés- és HMV-vezérlés Domoticzhoz
+
+A DSVT egy fejlett, többzónás fűtés-, hűtés- és használati melegvíz-vezérlő rendszer Domoticzhoz, amely elsősorban meglévő családi házak automatizálására készült.
+
+Nem egyszerű termosztátvezérlésről van szó. A rendszer képes összehangolni több fűtési és hűtési zónát, több hőforrást, a használati melegvíz-készítést, puffertartályt, keverőszelepeket, az energiafogyasztást és -termelést, az időjárási adatokat, a jelenlét-információt, valamint az ajtók és ablakok állapotát.
+
+A cél nem csupán egy vezérlőalgoritmus biztosítása, hanem egy használatra kész automatizálási rendszer létrehozása. A DSVT ezért a szükséges Domoticz-eszközök és kezelőelemek jelentős részét automatikusan létrehozza, és elérhetővé teszi azokat a Domoticz kezdőoldalán.
+
+A rendszer helyi működésre készült, nyílt környezetben, anélkül hogy a felhasználónak saját magának kellene felépítenie a teljes vezérlési logikát.
+
+## Főbb funkciók
+
+### Többzónás fűtés és hűtés
+
+- Legfeljebb 12 önálló fűtési/hűtési zóna
+- Helyiségenkénti hőmérséklet-szabályozás
+- Kézzel választható fűtési vagy hűtési üzemmód
+- TRV termosztatikus radiátorszelepek vezérlése
+- Padlófűtés, radiátoros fűtés, fal- és mennyezetfűtés/hűtés támogatása
+- Automatikusan számított célhőmérsékletek
+- Ajtó- és ablaknyitás érzékelése zónánként
+- Nyitott ajtó vagy ablak esetén az adott zóna fűtési vagy hűtési igénye figyelmen kívül hagyható
+
+### Több hőforrás kezelése
+
+A DSVT több különböző hőforrás összehangolt vezérlésére képes, például:
+
+- hőszivattyú
+- gázkazán
+- elektromos fűtés
+- egyéb kiegészítő hőforrás
+
+A rendszer a hőigény és a beállított rendszerkonfiguráció alapján képes összehangolni a különböző hőforrások működését.
+
+Kifejezetten alkalmas hibrid rendszerekhez, például amikor egy meglévő gázkazán mellé hőszivattyú kerül.
+
+### Külső hőmérséklet alapján változó célhőmérséklet
+
+A hőszivattyú hatékonyabb működésének elősegítésére a DSVT a külső hőmérséklet alapján képes változtatni a célhőmérsékleteket.
+
+Ez használható:
+
+- a fűtési előremenő célhőmérséklet meghatározására
+- a HMV célhőmérséklet meghatározására
+
+Enyhébb időben alacsonyabb, hidegebb időben magasabb célhőmérséklet használható, ami kedvezőbb üzemi körülményeket biztosíthat a hőszivattyú számára.
+
+### Használati melegvíz-vezérlés
+
+A HMV-vezérlés a rendszer szerves része.
+
+Főbb funkciói:
+
+- HMV-hőmérséklet szabályozása
+- több hőforrás támogatása
+- hőszivattyús HMV-készítés
+- kazános HMV-készítés
+- elektromos fűtőpatron vezérlése
+- időzített működés
+- hőforrások összehangolt használata
+- külső hőmérséklet alapján változó HMV célhőmérséklet
+- időzített fertőtlenítő felfűtés elektromos fűtőpatronnal
+
+Az időzített fertőtlenítő felfűtés segítségével a HMV-tartály időszakosan magasabb hőmérsékletre fűthető.
+
+### Puffertartály kezelése
+
+A rendszer képes a puffertartály hőmérsékleti adatait a fűtési és hűtési vezérlés részeként felhasználni.
+
+A puffer állapota felhasználható a hőforrások működésének összehangolására és a szükségtelen kapcsolgatások csökkentésére.
+
+### Keverőszelepek vezérlése
+
+A DSVT két egymástól független keverőszelep vezérlésére képes.
+
+Ez lehetővé teszi eltérő előremenő hőmérsékletek használatát különböző hőleadó rendszereknél, például:
+
+- padlófűtés
+- radiátoros fűtés
+- falfűtés
+- mennyezetfűtés
+- mennyezethűtés
+- falhűtés
+
+A keverőszelepek célhőmérséklete a rendszer aktuális igényeihez igazítható.
+
+### Harmatpontfigyelés hűtési üzemben
+
+Hűtési üzemben a rendszer képes figyelembe venni a harmatpontot.
+
+Ennek célja, hogy felülethűtés esetén csökkentse a páralecsapódás kockázatát, és megakadályozza, hogy a hűtővíz hőmérséklete a biztonságos érték alá csökkenjen.
+
+### Egészségügyi hűtési határérték
+
+Hűtési üzemben a DSVT automatikusan képes alkalmazni a beállított egészségügyi hűtési határértéket.
+
+Ennek célja, hogy ne alakuljon ki indokolatlanul nagy hőmérséklet-különbség a külső és belső hőmérséklet között, és ezáltal elkerülhető legyen a túlzottan intenzív hűtés.
+
+### Hagyományos légkondicionálók integrálása
+
+Hagyományos split klímaberendezések IR-vezérléssel integrálhatók a központi hűtési rendszerbe.
+
+Így a légkondicionálók nem különálló készülékként, hanem a teljes hűtési rendszer részeként működhetnek.
+
+### Előretekintő vezérlés
+
+A DSVT nem számítja automatikusan az épület termikus tehetetlenségét.
+
+Ehelyett beállítható, hogy a vezérlés mennyivel előre vegye figyelembe a várható hőmérséklet-változásokat.
+
+Így a működés hozzáigazítható például:
+
+- lassú reakciójú padlófűtéshez
+- gyorsabban reagáló radiátoros fűtéshez
+- eltérő termikus tulajdonságú épületekhez
+
+### Időjárási adatok
+
+A DSVT képes időjárás-előrejelzési adatokat felhasználni a vezérlés részeként.
+
+Az előrejelzési adatok felhasználhatók az előretekintő szabályozásban, valamint a várható fűtési vagy hűtési igény becslésében.
+
+A projekt célja olyan nemzetközi időjárási adatforrás használata, amely világszerte legalább hőmérséklet-előrejelzést biztosít.
+
+### Jelenlétalapú vezérlés
+
+A rendszer jelenlét-információ alapján automatikusan képes váltani komfort és energiatakarékos működés között.
+
+Ha senki nincs otthon, csökkenthető a szükségtelen fűtés vagy hűtés.
+
+Hazatéréskor a normál komfortbeállítások automatikusan visszaállíthatók.
+
+A jelenlétérzékelés külön telepíthető komponensként is elérhetővé válik, így ez a funkció nem lesz a Szélessáv SmartHome firmware használatához kötve.
+
+### Ajtó- és ablaknyitás érzékelése
+
+A DSVT minden zónában külön képes figyelni az ajtó- és ablakérzékelők állapotát.
+
+Nyitott ajtó vagy ablak esetén az érintett helyiség fűtési vagy hűtési igénye figyelmen kívül hagyható.
+
+Ez megakadályozza, hogy a rendszer nyitott ablak mellett próbálja fűteni vagy hűteni a helyiséget.
+
+### Energiafogyasztás és energiatermelés figyelése
+
+A rendszer képes energiafogyasztási és energiatermelési adatokat is felhasználni.
+
+Ez lehetővé teszi egyes rugalmasan vezérelhető fogyasztók működésének összehangolását többek között az alábbiakkal:
+
+- pillanatnyi napelemes energiatermelés
+- hálózati energiafelvétel
+- rendelkezésre álló energiatöbblet
+- beállított teljesítményhatárok
+
+Így például a HMV-készítés vagy más vezérelhető fogyasztók működése kedvezőbb időszakokra helyezhető át.
+
+## Külön HTML konfigurációs felület
+
+A nagyszámú funkció és konfigurációs lehetőség miatt az összes paraméter kezelése a Domoticz hagyományos hardverbeállítási mezőin keresztül nehezen áttekinthető lenne.
+
+Ezért a DSVT külön HTML adminisztrációs felületet biztosít.
+
+Ezen többek között az alábbiak konfigurálhatók:
+
+- zónák
+- célhőmérsékletek
+- hőforrások
+- keverőszelepek
+- HMV működése
+- jelenléti logika
+- ajtó- és ablakérzékelők
+- hűtési határértékek
+- előretekintési idő
+- egyéb működési és optimalizálási paraméterek
+
+A cél az, hogy az összetett vezérlési logika ellenére a rendszer konfigurációja átlátható maradjon.
+
+## Grafikus eseménynapló
+
+Az adminisztrációs felületen grafikusan megtekinthető az elmúlt 24 óra rendszereseményeinek naplója.
+
+Ez segítséget nyújt:
+
+- a rendszer működésének ellenőrzéséhez
+- a beállítások finomhangolásához
+- a hibák felismeréséhez
+- az energiafelhasználás optimalizálásához
+- a vezérlési döntések visszakövetéséhez
+
+## Automatikus kezelőfelület-kialakítás
+
+A kényelmes mindennapi használat érdekében a DSVT automatikusan létrehozza és a Domoticz kezdőoldalára helyezi a szükséges kezelőelemek jelentős részét.
+
+Ezek többek között lehetnek:
+
+- üzemmódválasztók
+- célhőmérséklet-beállítások
+- zónavezérlők
+- hőforrások állapotjelzései
+- HMV-vezérlők
+- keverőszelep-beállítások
+- jelenléti állapot
+- rendszerállapotok
+- működési és optimalizálási paraméterek
+
+A cél az, hogy a telepítés után a felhasználó ne egy üres automatizálási platformot kapjon, hanem egy használható és előkészített kezelőfelületet.
+
+## Helyi működés
+
+A DSVT helyi működésre készült Domoticz környezetben.
+
+A fűtés-, hűtés- és HMV-vezérlés nem igényel állandó felhőkapcsolatot.
+
+A rendszer fő vezérlési logikája helyben fut.
+
+## Tipikus rendszerfelépítés
+
+Egy tipikus DSVT rendszer például az alábbi elemekből állhat:
+
+- hőszivattyú
+- gázkazán
+- elektromos fűtőpatron
+- több fűtési/hűtési zóna
+- TRV szelepek
+- padlófűtés
+- radiátorok
+- fal- vagy mennyezeti fűtés/hűtés
+- hagyományos split klímaberendezések
+- puffertartály
+- HMV-tartály
+- két keverőszelep
+- beltéri hőmérséklet-érzékelők
+- külső hőmérséklet-érzékelő
+- páratartalom-érzékelők
+- ajtó- és ablakérzékelők
+- jelenlétérzékelés
+- energiafogyasztás-mérés
+- napelemes energiatermelés figyelése
+- időjárás-előrejelzési adatok
+
+A DSVT ezeket nem különálló eszközökként, hanem egyetlen összehangolt vezérlési rendszer részeként kezeli.
+
+## Mire készült?
+
+A DSVT elsősorban meglévő családi házak automatizálására készült.
+
+Különösen hasznos olyan rendszereknél, ahol:
+
+- többféle hőleadó rendszer működik
+- több hőforrást kell összehangolni
+- meglévő kazán mellé hőszivattyú kerül
+- több helyiség önálló szabályozása szükséges
+- a HMV-készítést is automatizálni kell
+- felülethűtés és légkondicionálás együttesen működik
+- napelemes energiatermelés áll rendelkezésre
+- fontos a helyi, felhőtől független működés
+- a felhasználó nem szeretné saját maga felépíteni a teljes automatizálási logikát
+
+## Többnyelvű támogatás
+
+A rendszer kezelőfelülete és a Domoticzban létrehozott eszközök több nyelvet támogatnak.
+
+Jelenleg támogatott nyelvek:
+
+- angol
+- cseh
+- dán
+- finn
+- francia
+- holland
+- japán
+- kínai
+- lengyel
+- magyar
+- német
+- norvég
+- olasz
+- portugál
+- spanyol
+- svéd
+
+A rendszer a Domoticzban beállított nyelv alapján képes létrehozni az eszközöket és a kezelőfelület elemeit a megfelelő nyelven.
+
+## Követelmények
+
+- Domoticz 2023.2 vagy frissebb
+- Python plugin támogatás
+- kompatibilis hőmérséklet-, páratartalom- és egyéb érzékelők
+- az adott HVAC rendszerhez megfelelő kapcsoló- és szabályozóeszközök
+
+A rendszer eddig elsősorban OpenWrt környezetben lett tesztelve és használva.
+
+Más Linux-alapú Domoticz rendszereken végzett tesztelést szívesen fogadunk.
+
+## Telepítés
+
+A repository-t a Domoticz plugin könyvtárába kell klónozni:
+
 ```sh
 cd /etc/domoticz/plugins
 git clone https://github.com/szelessavalapitvany/Domoticz-DSVT.git DSVT_HMV_ZONE_12
+```
+
+### HTML adminisztrációs felület telepítése
+
+A DSVT HTML adminisztrációs felülete a rendszer fontos része.
+
+A `viewer` könyvtár teljes tartalmát át kell másolni a Domoticz `templates` könyvtárába:
+
+```sh
+cp -r /etc/domoticz/plugins/DSVT_HMV_ZONE_12/viewer/* /usr/share/domoticz/www/templates/
+```
+
+Ez a lépés szükséges a DSVT saját konfigurációs és grafikus adminisztrációs felületének használatához.
+
+### Domoticz újraindítása
+
+A telepítés után újra kell indítani a Domoticz szolgáltatást.
+
+OpenWrt alatt:
+
+/etc/init.d/domoticz restart
+
+
+## Frissítés
+
+A plugin frissítéséhez:
+
+
+cd /etc/domoticz/plugins/DSVT_HMV_ZONE_12
+git pull
+
+
+A `viewer` könyvtár tartalmát frissítés után is újra át kell másolni, mert az adminisztrációs felület fájljai is változhatnak:
+
+cp -r viewer/* /usr/share/domoticz/www/templates/
+
+Ezután újra kell indítani a Domoticz szolgáltatást:
+
+
+/etc/init.d/domoticz restart
+
+
+## Beállítás és konfiguráció
+
+A rendszer részletes beállítási, konfigurációs és működési dokumentációja itt található:
+
+https://www.szelessavmuhely.hu/hu/futes_hutes_hmv_puffer
+
+## Projekt állapota
+
+A projekt jelenleg nyilvános tesztelésre készül.
+
+A rendszer OpenWrt + Domoticz környezetben már használatban van, de a szélesebb körű és nemzetközi kiadás előtt különösen hasznos a tesztelés:
+
+- különböző Domoticz verziókkal
+- különböző Linux környezetekben
+- eltérő fűtési és hűtési rendszerekkel
+- különböző hőforrás-kombinációkkal
+- különböző ország- és nyelvi beállításokkal
+
+A hibák, észrevételek és teszteredmények a GitHub Issues felületén jelezhetők.
+
+## Licenc
+
+A projekt MIT licenc alatt érhető el.
