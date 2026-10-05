@@ -1,0 +1,2161 @@
+<script>
+	if (typeof window.TranslationLoader === 'undefined') {
+
+		class TranslationLoader {
+			constructor() {
+				this.translations = {};
+
+				//	Promise, amit minden más kód megvárhat
+				this.loaded = this.loadTranslations().then(t => {
+					this.translations = t || {};
+					if (!$.isEmptyObject(this.translations)) {
+						this.translatePage();
+					} else {
+						console.error("Hiba: üres vagy hiányos fordítási fájl!");
+					}
+				});
+			}
+
+			async loadTranslations() {
+
+				//	Ellenőrzés, hogy a szükséges változók léteznek-e
+				if (typeof proto === 'undefined' || typeof address === 'undefined' || typeof port === 'undefined') {
+					console.error("Hiányzik a 'proto', 'address' vagy 'port' változó.");
+					return {};
+				}
+
+				let aktlanguage;
+
+				const settingsUrl = `${proto}${address}:${port.toString()}/json.htm?type=command&param=getsettings`;
+
+				try {
+					const response = await fetch(settingsUrl);
+					if (!response.ok) throw new Error('Hálózati hiba történt');
+					const data = await response.json();
+					aktlanguage = data.Language;
+				} catch (error) {
+					console.error('Hiba a beállítások lekérése közben:', error);
+					return {};
+				}
+
+				const filePath = `/templates/dsvt_html_translate_${aktlanguage}.json`;
+
+				try {
+					const response = await $.getJSON(filePath);
+					return response;
+				} catch (error) {
+					console.error(`Hiba történt a '${filePath}' fájl betöltése közben: ${error}`);
+					return {};
+				}
+			}
+
+			t(text) {
+				return this.translations[text] || text;
+			}
+
+			translatePage() {
+				$('[data-translate]').each((index, element) => {
+					const key = $(element).data('translate');
+					const translation = this.t(key);
+					$(element).text(translation);
+				});
+				console.log("Oldal sikeresen lefordítva.");
+			}
+		}
+
+		window.TranslationLoader = TranslationLoader;
+
+	}
+</script>
+
+	<div id="saveStatus" aria-hidden="true">
+			<div id="logOutput" aria-hidden="true">
+				Log panel indítva...
+			</div>
+			<svg viewBox="0 0 50 50" class="spin-icon" xmlns="http://www.w3.org/2000/svg">
+				<circle cx="25" cy="25" r="20" fill="none" stroke="#eee" stroke-width="5" stroke-linecap="round" stroke-dasharray="90" stroke-dashoffset="60"/>
+			</svg>
+	</div>
+	
+	<script>
+	var script = document.createElement('script');
+	script.src = 'templates/dsvt_hmv_zone_12_viewer.js?' + Date.now();
+	document.head.appendChild(script);
+	</script>
+	<h1 id="status"></h1>
+	<div id="dsvt_hmv_zone_12_content"></div>
+	
+	<style>
+		body { font-family: sans-serif; font-size:9pt; padding: 20px; color: #000;}
+		
+		.save-data {
+			background-color: #00759f;
+			border: none !important;
+			color: #fff;
+			cursor: pointer;
+			padding-top: 8px;
+			padding-bottom: 8px;
+			line-height: 20px;
+			padding-right: 12px;
+			padding-left: 12px;
+			margin-right: 2px;
+			font-size: 10pt;
+			font-weight: bold;
+			margin-bottom: 50px;
+			float: right;
+		}
+
+		#logOutput {
+			background:#ddd; 
+			color:#000; 
+			font-family:monospace; 
+			font-size:10pt; 
+			padding:10px; 
+			height:100px; 
+			overflow:auto; 
+			margin-top:20px;
+			display:none;
+		}
+
+		#saveStatus {
+			position: fixed;
+			top: 0px;
+			right: 0px;
+			width: 100%;
+			height: 100%;
+			z-index: 9999;
+			background-color: #fff;
+		}
+
+		.spin-icon {
+			width: 100%;
+			height: 100%;
+			animation: spin 1s linear infinite;
+		}
+
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+		
+		.device {
+			border: 1px solid #999;
+			padding: 10px;
+			background-color: #eee;
+			cursor: grab;
+			display: inline-block;
+			margin: 5px 5px 5px 0;
+			color: #000;
+		}
+		.drop-target {
+			border: 1px solid #aaa;
+			min-height: 40px;
+			padding: 5px;
+			background-color: #fff;
+			margin-top: 5px;
+		}
+		.drop-target.dragover {
+			border-color: #007bff;
+			background-color: #f0faff;
+		}
+		.chooser-toggle {
+			cursor: pointer;
+			color: #007bff;
+			font-size: 0.9em;
+			margin-bottom: 5px;
+			display: inline-block;
+		}
+		.chooser-box {
+			display: none;
+			padding: 5px;
+			border: 2px dashed #ddd;
+			background: #f9f9f9;
+			margin-bottom: 10px;
+		}
+		.zone-block {
+			border: 1px solid #ccc;
+			padding: 15px;
+			margin-bottom: 30px;
+			background-color: #fff;
+		}
+		.device-block {
+			border: 2px solid #ccc;
+			padding: 15px;
+			margin-bottom: 20px;
+			background-color: #f9f9f9;
+		}
+
+		.device-1 {
+			background-color: #fff;
+		}
+
+		.device-2 {
+			background-color: #fff;
+		}
+
+		.zone-block {
+			background-color: #fff;
+		}
+		.paramname {
+			font-weight:bold;
+			font-size: 12pt !important;
+			margin-right: 20px;
+			color: #000;
+		}
+		.setpoint-name {
+			width:40% !important;
+			font-size: 9pt !important;
+		}
+		.setpoint-number {
+			width:50px !important;
+			font-size: 9pt !important;
+		}
+		.input-small {
+			width: 3ch;
+			background-color: #fff !important;
+			font-size: 10pt;
+		}
+		.input-normal {
+			width: 16ch;
+			background-color: #fff !important;
+			font-size: 10pt;
+		}
+		.input-p1 {
+			width: 4ch;
+			background-color: #fff !important;
+			font-size: 10pt;
+		}
+		.label-normal {
+			font-weight:bold;
+			font-size: 12pt !important;
+			margin-right: 10px;
+			color: #000;
+		}
+		.label-h2 {
+			margin-bottom: 15px;
+			color: #000;
+		}
+		.select-normal {
+			width:50px !important;
+			font-size: 9pt !important;
+		}
+		.select-120 {
+			width:120px !important;
+			font-size: 9pt !important;
+		}
+		.input-12 {
+			width: 12ch;
+			background-color: #fff !important;
+			font-size: 10pt;
+		}
+		.klimaWrapper {
+			margin: 15px 3px 0 3px;
+			padding-bottom: 10px;
+		}
+		.klimaContent {
+			margin: 15px 0 15px 0;
+			padding: 15px 10px 15px 10px;
+			border: 1px #aaa solid;
+		}
+		.klimaExtraRowF, .klimaExtraRowH, klimaCheckboxRowF {
+			margin: 15px 0 0 0;
+			padding-bottom: 10px;
+		}
+		.input-20 {
+			width: 20px;
+			margin-left: 5px;
+		}
+
+	</style>
+	<script>
+	var address = window.location.hostname;
+	var port = window.location.port;
+	var proto = window.location.protocol + '//';
+
+		if (typeof window.translationLoader === 'undefined') {
+		window.translationLoader = new TranslationLoader();
+	}
+	function showSaveStatus() {
+		document.getElementById("saveStatus").style.display = "block";
+		console.log('showSaveStatus');
+	}
+	function showLogStatus() {
+		document.getElementById("logOutput").style.display = "block";
+		console.log('showLogStatus');
+	}
+	function logToScreen(msg) {
+		const logBox = document.getElementById("logOutput");
+		if (!logBox) return;
+		const timestamp = new Date().toLocaleTimeString();
+		logBox.innerHTML += `[${timestamp}] ${msg}<br>`;
+		logBox.scrollTop = logBox.scrollHeight; // automatikus scroll
+	}
+	function hideSaveStatus() {
+		document.getElementById("saveStatus").style.display = "none";
+		console.log('hideSaveStatus');
+	}
+
+	Promise.resolve(window.translationLoader.loaded).then(() => {
+		function download(filename, text) {
+			var element = document.createElement('a');
+			element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+			element.setAttribute('download', filename);
+
+			element.style.display = 'none';
+			document.body.appendChild(element);
+
+			element.click();
+
+			document.body.removeChild(element);
+		}
+
+		var dayname = [
+			translationLoader.t("Monday") + ":0",
+			translationLoader.t("Tuesday") + ":1",
+			translationLoader.t("Wednesday") + ":2",
+			translationLoader.t("Thursday") + ":3",
+			translationLoader.t("Friday") + ":4",
+			translationLoader.t("Saturday") + ":5",
+			translationLoader.t("Sunday") + ":6"
+		];
+
+		var hourname = [
+			"00:0",
+			"01:1",
+			"02:2",
+			"03:3",
+			"04:4",
+			"05:5",
+			"06:6",
+			"07:7",
+			"08:8",
+			"09:9",
+			"10:10",
+			"11:11",
+			"12:12",
+			"13:13",
+			"14:14",
+			"15:15",
+			"16:16",
+			"18:16",
+			"19:19",
+			"20:20",
+			"21:21",
+			"22:22",
+			"23:23",
+		];
+
+		const base_ids = {
+			1: [4, 5, 8, 9, 126, 127, 128, 129],
+			2: [38, 39, 40, 41, 132, 133, 134, 135],
+			3: [42, 43, 44, 45, 136, 137, 138, 139],
+			4: [46, 47, 48, 49, 140, 141, 142, 143],
+			5: [50, 51, 52, 53, 144, 145, 146, 147],
+			6: [54, 55, 56, 57, 148, 149, 150, 151],
+			7: [162, 163, 164, 165, 166, 167, 168, 169],
+			8: [170, 171, 172, 173, 174, 175, 176, 177],
+			9: [178, 179, 180, 181, 182, 183, 184, 185],
+			10: [186, 187, 188, 189, 190, 191, 192, 193],
+			11: [194, 195, 196, 197, 198, 199, 200, 201],
+			12: [202, 203, 204, 205, 206, 207, 208, 209]
+		};
+
+		function showUsageChart(data, i) {
+			var chartElement = $('#graph1'+i);
+			
+			var series = [];
+
+			if(data.TempIn != undefined) {
+				series.push({
+					name: translationLoader.t("Internal temperature"),
+					yAxis: 0,
+					data: data.TempIn.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.tempOut != undefined) {
+				series.push({
+					name: translationLoader.t("Outside temperature"),
+					yAxis: 0,
+					data: data.tempOut.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Kevero_1_temp != undefined) {
+				series.push({
+					name: translationLoader.t("Mixer 1 target temperature"),
+					yAxis: 0,
+					data: data.Kevero_1_temp.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Kevero_2_temp != undefined) {
+				series.push({
+					name: translationLoader.t("Mixer 2 target temperature"),
+					yAxis: 0,
+					data: data.Kevero_2_temp.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Fsetpoint != undefined) {
+				series.push({
+					name: translationLoader.t("Heating target temperature (max.)"),
+					color: 'rgba(230,50,230,1)',
+					yAxis: 0,
+					data: data.Fsetpoint.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Hsetpoint != undefined) {
+				series.push({
+					name: translationLoader.t("Cooling target temperature (min.)"),
+					yAxis: 0,
+					data: data.Hsetpoint.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.aktcelmax != undefined) {
+				series.push({
+					name: translationLoader.t("Current target temperature max"),
+					yAxis: 0,
+					data: data.aktcelmax.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.tempOutdew != undefined) {
+				series.push({
+					name: translationLoader.t("Outdew"),
+					yAxis: 0,
+					data: data.tempOutdew.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.tempIntdew != undefined) {
+				series.push({
+					name: translationLoader.t("Indew"),
+					yAxis: 0,
+					data: data.tempIntdew.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+
+			// --- Zónahőmérsékletek ---
+			for (const [key, value] of Object.entries(data)) {
+				if (key.startsWith("zonetemp_") && Array.isArray(value) && value.length > 0) {
+					const zName = key.replace("zonetemp_", "").replace(/_/g, " ");
+					//console.log("Zónahőmérséklet adatsor:", zName, value.length);
+
+					series.push({
+						name:  zName,
+						yAxis: 0,
+						data: value.map(item => ({
+							x: +(new Date(item.d)),
+							y: parseFloat(item.te)
+						}))
+					});
+				}
+			}
+
+			if(data.aktcelmin != undefined) {
+				series.push({
+					name: translationLoader.t("Current target temperature min."),
+					yAxis: 0,
+					data: data.aktcelmin.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Elsodleges_F != undefined && Array.isArray(data.Elsodleges_F.historic)) {
+				series.push({
+					name: translationLoader.t("1. device heating"),
+					yAxis: 1,
+					step: true,
+					data: data.Elsodleges_F.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Elsodleges_F.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Elsodleges_H != undefined && Array.isArray(data.Elsodleges_H.historic)) {
+				series.push({
+					name: translationLoader.t("1. device cooling"),
+					yAxis: 1,
+					step: true,
+					data: data.Elsodleges_H.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Elsodleges_H.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Masodlagos_F != undefined && Array.isArray(data.Masodlagos_F.historic)) {
+				series.push({
+					name: translationLoader.t("2. device heating"),
+					yAxis: 1,
+					step: true,
+					data: data.Masodlagos_F.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Masodlagos_F.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Masodlagos_H != undefined && Array.isArray(data.Masodlagos_H.historic)) {
+				series.push({
+					name: translationLoader.t("2. device cooling"),
+					yAxis: 1,
+					step: true,
+					data: data.Masodlagos_H.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Masodlagos_H.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			chartElement.highcharts({
+				chart: {
+					zoomType: 'x'
+				},
+				title: {
+					text: ''
+				},
+				xAxis: {
+					type: 'datetime',
+					minTickInterval: 24 * 3600 * 1000
+				},
+				yAxis: [
+					{
+						title: {
+							text: 'Temp (°C)'
+						},
+						maxPadding: 0
+					},
+					{
+						title: {
+							text: translationLoader.t("On (%)")
+						},
+						maxPadding: 0
+					}
+
+				],
+				tooltip: {
+					formatter: function () {
+						return Highcharts.dateFormat('%Y-%m-%d %H:%M', this.x) + '<br/>' + this.series.name + ': ' + Highcharts.numberFormat(this.y,1);
+					}
+				},
+				plotOptions: {
+					column: {
+						minPointLength: 4,
+						pointPadding: 0.1,
+						groupPadding: 0,
+						dataLabels: {
+							enabled: true,
+							color: 'white',
+							format: '{y} °C'
+						}
+					},
+					series: {
+						turboThreshold : 0
+					}
+				},
+				legend: {
+					enabled: true
+				},
+				series: series
+			});
+
+			var chartElement = $('#graph2'+i);
+			
+			var series = [];
+
+			if(data.Msetpoint != undefined) {
+				series.push({
+					name: translationLoader.t("DHW target temperature"),
+					yAxis: 0,
+					data: data.Msetpoint.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Psetpoint != undefined) {
+				series.push({
+					name: translationLoader.t("Buffer target temperature"),
+					yAxis: 0,
+					data: data.Psetpoint.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.tempTartaly != undefined) {
+				series.push({
+					name: translationLoader.t("Tank temperature"),
+					yAxis: 0,
+					data: data.tempTartaly.map(function (item) {
+						return {
+							x: +(new Date(item.d)),
+							y: item.te
+						}
+					})
+				});
+			}
+			if(data.Elsodleges_M != undefined && Array.isArray(data.Elsodleges_M.historic)) {
+				series.push({
+					name: translationLoader.t("Device 1: DHW"),
+					yAxis: 1,
+					step: true,
+					data: data.Elsodleges_M.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Elsodleges_M.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Masodlagos_M != undefined && Array.isArray(data.Masodlagos_M.historic)) {
+				series.push({
+					name: translationLoader.t("Device 2: DHW"),
+					yAxis: 1,
+					step: true,
+					data: data.Masodlagos_M.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Masodlagos_M.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Elsodleges_E != undefined && Array.isArray(data.Elsodleges_E.historic)) {
+				series.push({
+					name: translationLoader.t("Device 1 E cartridge"),
+					yAxis: 1,
+					step: true,
+					data: data.Elsodleges_E.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Elsodleges_E.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Masodlagos_E != undefined && Array.isArray(data.Masodlagos_E.historic)) {
+				series.push({
+					name: translationLoader.t("Device 2 E cartridge"),
+					yAxis: 1,
+					step: true,
+					data: data.Masodlagos_E.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Masodlagos_E.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Elsodleges_P != undefined && Array.isArray(data.Elsodleges_P.historic)) {
+				series.push({
+					name: translationLoader.t("Device 1 Buffer"),
+					yAxis: 1,
+					step: true,
+					data: data.Elsodleges_P.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Elsodleges_P.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			if(data.Masodlagos_P != undefined && Array.isArray(data.Masodlagos_P.historic)) {
+				series.push({
+					name: translationLoader.t("Device 2 Buffer"),
+					yAxis: 1,
+					step: true,
+					data: data.Masodlagos_P.historic.map(function (item) {
+						return {
+							x: +(new Date(item.Date)),
+							y: (item.Data=="On" || item.Data.startsWith("Set Level"))?((!data.Masodlagos_P.isDimmer)?100:(item.Level>100?100:item.Level)):0
+						}
+					})
+				});
+			}
+			//console.log(series);
+			chartElement.highcharts({
+				chart: {
+					zoomType: 'x'
+				},
+				title: {
+					text: ''
+				},
+				xAxis: {
+					type: 'datetime',
+					minTickInterval: 24 * 3600 * 1000
+				},
+				yAxis: [
+					{
+						title: {
+							text: 'Temp (°C)'
+						},
+						maxPadding: 0
+					},
+					{
+						title: {
+							text: translationLoader.t("On (%)")
+						},
+						maxPadding: 0
+					}
+
+				],
+				tooltip: {
+					formatter: function () {
+						return Highcharts.dateFormat('%Y-%m-%d %H:%M', this.x) + '<br/>' + this.series.name + ': ' + Highcharts.numberFormat(this.y,1);
+					}
+				},
+				plotOptions: {
+					column: {
+						minPointLength: 4,
+						pointPadding: 0.1,
+						groupPadding: 0,
+						dataLabels: {
+							enabled: true,
+							color: 'white',
+							format: '{y} °C'
+						}
+					},
+					series: {
+						turboThreshold : 0
+					}
+				},
+				legend: {
+					enabled: true
+				},
+				series: series
+			});
+		}
+		var dsvt=getThermostats();
+		var askJSON = getRequestPelsodleges("thermostatHistory");
+		if(askJSON != undefined) {
+			var th = dsvt.filter((t) => t.name == askJSON);
+			if(th.length > 0) {
+				var s = JSON.stringify(dsvt[0]);
+				download(dsvt[0].name+'_'+new Date().yyyymmdd_hhmm(), s);
+			}
+		} else {
+
+			if (nodata) {
+					document.getElementById("status").innerText = translationLoader.t("No active plugins!");
+					hideSaveStatus();
+					return;
+			}
+
+			for(var i=0;i<dsvt.length;i++) {
+
+			var table = document.createElement('table');
+			table.setAttribute('style', 'border-spacing: 5px;');
+			document.getElementById('dsvt_hmv_zone_12_content').appendChild(table);
+			
+			var row = table.insertRow();
+			var cell1 = row.insertCell(0);
+			
+			var redname = document.createElement('h1');
+			redname.setAttribute('style', 'margin-top:15px; margin-bottom: 10px;');
+			redname.innerText = dsvt[i].name;
+			cell1.appendChild(redname);
+
+			// Graf
+
+			element = document.createElement('h3');
+			element.innerText = translationLoader.t('Thermostat');;
+			document.getElementById('dsvt_hmv_zone_12_content').appendChild(element);
+			element = document.createElement('div');
+			element.setAttribute('class', 'device-log-chart');
+			element.setAttribute('id', 'graph1'+i);
+			document.getElementById('dsvt_hmv_zone_12_content').appendChild(element);
+
+			element = document.createElement('h3');
+			element.innerText = 'HMV, Puffer';
+			document.getElementById('dsvt_hmv_zone_12_content').appendChild(element);
+			element = document.createElement('div');
+			element.setAttribute('class', 'device-log-chart');
+			element.setAttribute('id', 'graph2'+i);
+			document.getElementById('dsvt_hmv_zone_12_content').appendChild(element);
+
+			showUsageChart(dsvt[i], i);
+
+			// eszkozok-zonak
+			
+			const contentContainer = document.getElementById('dsvt_hmv_zone_12_content');
+
+			// Kontenerek
+			const device3Block = document.createElement('div');
+			device3Block.id = 'device3Block_' + i;
+			contentContainer.appendChild(device3Block);
+			
+			const device1Block = document.createElement('div');
+			device1Block.classList.add('device-block', 'device-1');
+			contentContainer.appendChild(device1Block);
+
+			const device2Block = document.createElement('div');
+			device2Block.classList.add('device-block', 'device-2');
+			contentContainer.appendChild(device2Block);
+
+			const valveBlock = document.createElement('div');
+			valveBlock.classList.add('device-block', 'valve');
+			contentContainer.appendChild(valveBlock);
+
+
+			const zonesBlock = document.createElement('div');
+			contentContainer.appendChild(zonesBlock);
+
+			const fanOptions = ["Auto", "Low", "Medium", "High", "Max"];
+			const swingVOptions = ["Off", "Auto"];
+			const swingHOptions = ["Off", "Auto"];
+
+
+			function createDropBlock(dsvt, i, config, parentEl) {
+				const { mode, link, title, forparam, modePrefix, targetId, datasetKey, inputName } = config;
+
+				let table = document.createElement('table');
+				table.setAttribute('style', 'width:100%; border-spacing: 3px; margin-bottom: 10px;');
+				parentEl.appendChild(table);
+
+				let row1 = table.insertRow();
+				let cell1 = row1.insertCell(0);
+
+				let chooserToggleName = document.createElement('span');
+				chooserToggleName.textContent = translationLoader.t(title);
+				chooserToggleName.className = 'paramname';
+				cell1.appendChild(chooserToggleName);
+
+				let chooserToggle = document.createElement('span');
+				chooserToggle.className = `chooser-toggle`;
+				chooserToggle.textContent = translationLoader.t(link);
+				chooserToggle.dataset.target = targetId+'_'+i;
+				cell1.appendChild(chooserToggle);
+
+				let chooserBox = document.createElement('div');
+				chooserBox.className = 'chooser-box';
+				chooserBox.id = `${targetId+'_'+i}_chooser`;
+
+				if (modePrefix == 'N') {
+					dayname.forEach(entry => {
+						let [label, id] = entry.split(':');
+						let device = document.createElement('div');
+						device.className = 'device';
+						device.draggable = true;
+						device.dataset.id = id;
+						device.dataset.label = label;
+						device.dataset.target = targetId+'_'+i;
+						device.textContent = `${label} `;
+						chooserBox.appendChild(device);
+					});
+				} else if (modePrefix == 'O') {
+					hourname.forEach(entry => {
+						let [label, id] = entry.split(':');
+						let device = document.createElement('div');
+						device.className = 'device';
+						device.draggable = true;
+						device.dataset.id = id;
+						device.dataset.label = label;
+						device.dataset.target = targetId+'_'+i;
+						device.textContent = `${label}:00`;
+						chooserBox.appendChild(device);
+					});
+				} else {
+					dsvt[i][forparam].forEach(entry => {
+						let [unit, label, id] = entry.split(':');
+						let device = document.createElement('div');
+						device.className = 'device';
+						device.draggable = true;
+						device.dataset.id = id;
+						device.dataset.label = label;
+						device.dataset.target = targetId+'_'+i;
+						device.textContent = `${label} (idx: ${id})`;
+						chooserBox.appendChild(device);
+					});
+				}
+
+				cell1.appendChild(chooserBox);
+
+				let row2 = table.insertRow();
+				let cell2 = row2.insertCell(0);
+
+				let dropZone = document.createElement('div');
+				dropZone.className = 'drop-target';
+				dropZone.id = targetId+'_'+i;
+				dropZone.dataset[datasetKey] = '';
+				cell2.appendChild(dropZone);
+
+				let row3 = table.insertRow();
+				let cell3 = row3.insertCell(0);
+
+				let hiddenInput = document.createElement('input');
+				hiddenInput.type = 'hidden';
+				hiddenInput.name = inputName;
+				cell3.appendChild(hiddenInput);
+
+				chooserToggle.addEventListener('click', () => {
+					chooserBox.style.display = chooserBox.style.display === 'block' ? 'none' : 'block';
+				});
+
+				chooserBox.querySelectorAll('.device').forEach(dev => {
+					dev.addEventListener('dragstart', e => {
+						e.dataTransfer.setData('id', dev.dataset.id);
+						e.dataTransfer.setData('label', dev.dataset.label);
+						e.dataTransfer.setData('target', dev.dataset.target);
+						e.dataTransfer.setData('unit', dev.dataset.unit);
+					});
+				});
+
+				dropZone.addEventListener('dragover', e => {
+					e.preventDefault();
+					dropZone.classList.add('dragover');
+				});
+				dropZone.addEventListener('dragleave', () => {
+					dropZone.classList.remove('dragover');
+				});
+				dropZone.addEventListener('drop', e => {
+					e.preventDefault();
+					dropZone.classList.remove('dragover');
+					const id = e.dataTransfer.getData('id');
+					const label = e.dataTransfer.getData('label');
+					const target = e.dataTransfer.getData('target');
+					const unit = e.dataTransfer.getData('unit');
+
+					if (dropZone.id !== target) return;
+
+					let currentIds = dropZone.dataset[datasetKey] ? dropZone.dataset[datasetKey].split(',') : [];
+					if (!currentIds.includes(id)) {
+						let chip = createChip(unit, label, id, dropZone, hiddenInput, datasetKey, false);
+						dropZone.appendChild(chip);
+						currentIds.push(id);
+						dropZone.dataset[datasetKey] = currentIds.join(',');
+						hiddenInput.value = currentIds.join(',');
+					}
+				});
+
+				let modeRaw = dsvt[i] && typeof dsvt[i][mode] === 'string' ? dsvt[i][mode] : '';
+				let modeItems = modeRaw
+					.split(',')
+					.map(s => s.trim())
+					.filter(s => modePrefix === '' || s.startsWith(modePrefix + ':'))
+					.map(s => modePrefix === '' ? s : s.substring(modePrefix.length + 1));
+
+				let ids = [];
+
+				modeItems.forEach(idx => {
+
+					let found = dsvt[i].aktname.find(entry => {
+						let parts = entry.split(':');
+						return parts[2] == idx;
+					});
+
+					if (found) {
+
+						let parts = found.split(':');
+
+						let unit  = parts[0];
+						let label = parts[1];
+						let id    = parts[2];
+
+						let chip = createChip(unit, label, id, dropZone, hiddenInput, datasetKey, false);
+
+						dropZone.appendChild(chip);
+						ids.push(id);
+					}
+				});
+
+				dropZone.dataset[datasetKey] = ids.join(',');
+				hiddenInput.value = ids.join(',');
+
+				dropZone.dataset[datasetKey] = ids.join(',');
+				hiddenInput.value = ids.join(',');
+			}
+
+			function createChip(unit, label, id, dropZone, hiddenInput, datasetKey, draggable = true) {
+				const chip = document.createElement('div');
+				chip.className = 'device';
+				chip.innerHTML = `${label} (idx: ${id}) <span class="remove-x" style="color:red; cursor:pointer; margin-left:8px;">✖</span>`;
+				chip.dataset.id = id;
+
+				if (draggable) {
+					chip.setAttribute('draggable', 'true');
+					chip.addEventListener('dragstart', e => {
+						e.dataTransfer.setData('remove-id', id);
+					});
+					chip.addEventListener('dragend', e => {
+						if (!dropZone.contains(chip)) {
+							chip.remove();
+							let updatedIds = dropZone.dataset[datasetKey].split(',').filter(existingId => existingId !== id);
+							dropZone.dataset[datasetKey] = updatedIds.join(',');
+							hiddenInput.value = updatedIds.join(',');
+						}
+					});
+				}
+
+				chip.querySelector('.remove-x').addEventListener('click', e => {
+					e.stopPropagation();
+					chip.remove();
+					let updatedIds = dropZone.dataset[datasetKey].split(',').filter(existingId => existingId !== id);
+					dropZone.dataset[datasetKey] = updatedIds.join(',');
+					hiddenInput.value = updatedIds.join(',');
+				});
+
+				return chip;
+			}
+
+			const dropBlockConfigs = [];
+
+			// Ezkoz 1
+			[
+				{ title: "1. device heating", link: "➕ Add heating switch", modePrefix: 'F', targetId: 'heating_switch_1', datasetKey: 'f1', inputName: 'heating_switch_id_1' },
+				{ title: "1. device cooling", link: "➕ Add cooling switch", modePrefix: 'H', targetId: 'colling_switch_1', datasetKey: 'h1', inputName: 'colling_switch_id_1' },
+				{ title: "Device 1 Domestic Hot Water (DHW)", link: "➕ Add DHW switch", modePrefix: 'M', targetId: 'hmv_switch_1', datasetKey: 'm1', inputName: 'hhmv_switch_id_1' },
+				{ title: "Device 1: Heater cartridge switch", link: "➕ Add a heater switch", modePrefix: 'E', targetId: 'cartridge_switch_1', datasetKey: 'e1', inputName: 'cartridge_switch_id_1' },
+				{ title: "Device 1 Buffer heating", link: "➕ Add a buffer switch heating", modePrefix: 'P_F', targetId: 'buffer_switch_heating_1', datasetKey: 'p1bh', inputName: 'buffer_switch_heating_id_1' },
+				{ title: "Device 1 Buffer cooling", link: "➕ Add a buffer switch cooling", modePrefix: 'P_H', targetId: 'buffer_switch_cooling_1', datasetKey: 'p1bc', inputName: 'buffer_switch_id_cooling_1' },
+				{ title: "Device 1: Buffer heater cartridge switch", link: "➕ Add a buffer heater switch", modePrefix: 'PE', targetId: 'pcartridge_switch_1', datasetKey: 'pe1', inputName: 'pcartridge_switch_id_1' },
+				{ title: "Device 1: On delay", link: "➕ Add on delay switch", modePrefix: 'BK', targetId: 'before_switch_1', datasetKey: 'bk1', inputName: 'before_switch_id_1' },
+				{ title: "Device 1: Off delay", link: "➕ Add off delay switch", modePrefix: 'UK', targetId: 'after_switch_1', datasetKey: 'uk1', inputName: 'after_switch_id_1' },
+				{ title: "Device 1 DHW disinfection day", link: "➕ Add day", modePrefix: 'N', targetId: 'day_switch_1', datasetKey: 'n1', inputName: 'day_switch_id_1', forparam: 'dayname' },
+				{ title: "Device 1 DHW disinfection hour", link: "➕ Add hour", modePrefix: 'O', targetId: 'hour_switch_1', datasetKey: 'o1', inputName: 'hour_switch_id_1', forparam: 'hourname' },
+				
+			].forEach(cfg => {
+				dropBlockConfigs.push({ mode: 'Mode4', forparam: cfg.forparam || 'switchnameakt', ...cfg });
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), device1Block);
+			});
+
+			// Eszkoz 2
+			[
+				{ title: "2. device heating", link: "➕ Add heating switch", modePrefix: 'F', targetId: 'heating_switch_2', datasetKey: 'f2', inputName: 'heating_switch_id_2' },
+				{ title: "2. device cooling", link: "➕ Add cooling switch", modePrefix: 'H', targetId: 'colling_switch_2', datasetKey: 'h2', inputName: 'colling_switch_id_2' },
+				{ title: "Device 2 Domestic Hot Water (DHW)", link: "➕ Add DHW switch", modePrefix: 'M', targetId: 'hmv_switch_2', datasetKey: 'm2', inputName: 'hhmv_switch_id_2' },
+				{ title: "Device 2: Heater cartridge switch", link: "➕ Add a heater switch", modePrefix: 'E', targetId: 'cartridge_switch_2', datasetKey: 'e2', inputName: 'cartridge_switch_id_2' },
+				{ title: "Device 2 Buffer heating", link: "➕ Add a buffer switch heating", modePrefix: 'P_F', targetId: 'buffer_switch_heating_2', datasetKey: 'p2bh', inputName: 'buffer_switch_heating_id_2' },
+				{ title: "Device 2 Buffer cooling", link: "➕ Add a buffer switch cooling", modePrefix: 'P_H', targetId: 'buffer_switch_cooling_2', datasetKey: 'p2bc', inputName: 'buffer_switch_id_cooling_2' },
+				{ title: "Device 2: Buffer heater cartridge switch", link: "➕ Add a buffer heater switch", modePrefix: 'PE', targetId: 'pcartridge_switch_2', datasetKey: 'pe2', inputName: 'pcartridge_switch_id_2' },
+				{ title: "Device 2: On delay", link: "➕ Add on delay switch", modePrefix: 'BK', targetId: 'before_switch_2', datasetKey: 'bk2', inputName: 'before_switch_id_2' },
+				{ title: "Device 2: Off delay", link: "➕ Add off delay switch", modePrefix: 'UK', targetId: 'after_switch_2', datasetKey: 'uk2', inputName: 'after_switch_id_2' },
+				{ title: "Device 2 DHW disinfection day", link: "➕ Add day", modePrefix: 'N', targetId: 'day_switch_2', datasetKey: 'n2', inputName: 'day_switch_id_2', forparam: 'dayname' },
+				{ title: "Device 2 DHW disinfection hour", link: "➕ Add hour", modePrefix: 'O', targetId: 'hour_switch_2', datasetKey: 'o2', inputName: 'hour_switch_id_2', forparam: 'hourname' },
+			].forEach(cfg => {
+				dropBlockConfigs.push({ mode: 'Mode5', forparam: cfg.forparam || 'switchnameakt', ...cfg });
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), device2Block);
+			});
+
+			// Kulso homero, Keveroszelep, szoba, hmv, puffer homero
+			[
+				{ title: "Outdoor thermometer|s|", link: "➕ Add thermometer", modePrefix: 'K', targetId: 'out_temp', datasetKey: 'k', inputName: 'out_temp_id', forparam: 'tempnameakt' },
+				{ title: "DHW tank thermometer|s|", link: "➕ Add thermometer", modePrefix: 'T', targetId: 'hmv_temp', datasetKey: 't', inputName: 'hmv_temp_id', forparam: 'tempnameakt' },
+				{ title: "Buffer tank thermometer|s|", link: "➕ Add thermometer", modePrefix: 'P', targetId: 'puffer_temp', datasetKey: 'p', inputName: 'puffer_temp_id', forparam: 'tempnameakt' },
+				{ title: "Room compensation thermometers", link: "➕ Add thermometer", modePrefix: 'L', targetId: 'room_temp', datasetKey: 'l', inputName: 'room_temp_id', forparam: 'tempnameakt' },
+				{ title: "Room compensation switch on", link: "➕ Add plus switch", modePrefix: 'L', targetId: 'room_pluss', datasetKey: 'l', inputName: 'room_pluss_id', forparam: 'switchnameakt' },
+				{ title: "1. mixing thermometer|s|", link: "➕ Add thermometer", modePrefix: 'S_1', targetId: 'valve_1_temp', datasetKey: 's_1', inputName: 'valve_1_temp_id', forparam: 'tempnameakt' },
+				{ title: "2. mixing thermometer|s|", link: "➕ Add thermometer", modePrefix: 'S_2', targetId: 'valve_2_temp', datasetKey: 's_2', inputName: 'valve_2_temp_id', forparam: 'tempnameakt' },
+			].forEach(cfg => {
+				dropBlockConfigs.push({ mode: 'Mode1', forparam: cfg.forparam || 'tempnameakt', ...cfg });
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
+			});
+
+			// Keveroszelep
+			[
+				{ title: "1. mixing valve plus", link: "➕ Add plus switch", modePrefix: 'S_1', targetId: 'valve_1_pluss', datasetKey: 's_1', inputName: 'valve_1_pluss_id', forparam: 'switchnameakt' },
+				{ title: "2. mixing valve plus", link: "➕ Add plus switch", modePrefix: 'S_2', targetId: 'valve_2_pluss', datasetKey: 's_2', inputName: 'valve_2_pluss_id', forparam: 'switchnameakt' },
+			].forEach(cfg => {
+				dropBlockConfigs.push({ mode: 'Mode2', forparam: cfg.forparam || 'switchnameakt', ...cfg });
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
+			});
+
+			// Keveroszelep
+			[
+				{ title: "1. mixing valve minus", link: "➕ Add minus switch", modePrefix: 'S_1', targetId: 'valve_1_minus', datasetKey: 's_1', inputName: 'valve_1_minus_id', forparam: 'switchnameakt' },
+				{ title: "2. mixing valve minus", link: "➕ Add minus switch", modePrefix: 'S_2', targetId: 'valve_2_minus', datasetKey: 's_2', inputName: 'valve_2_minus_id', forparam: 'switchnameakt' },
+			].forEach(cfg => {
+				dropBlockConfigs.push({ mode: 'Mode3', forparam: cfg.forparam || 'switchnameakt', ...cfg });
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
+			});
+
+			// Mode6
+
+			var mode6Array = dsvt[i].Mode6.split(',');
+
+			var table = document.createElement('table');
+			table.setAttribute('style', 'border-spacing: 3px; margin-bottom: 10px; background-color: #fff !important; border: 1px solid #aaa; width:100%; padding:0px;');
+			document.getElementById('device3Block_' + i).appendChild(table);
+
+			var row = table.insertRow();
+				var cell1 = row.insertCell(0);
+
+			var table = document.createElement('table');
+			table.setAttribute('style', 'border-spacing: 10px;');
+			cell1.appendChild(table);
+
+			var row = table.insertRow();
+			var cell1 = row.insertCell(0);
+			var cell2 = row.insertCell(1);
+			var cell3 = row.insertCell(2);
+			var cell4 = row.insertCell(3);
+			var cell5 = row.insertCell(4);
+			var cell6 = row.insertCell(5);
+			var cell7 = row.insertCell(6);
+			var cell8 = row.insertCell(7);
+			var cell9 = row.insertCell(8);
+			var cell10 = row.insertCell(9);
+			var cell11 = row.insertCell(10);
+			var cell12 = row.insertCell(11);
+			var cell13 = row.insertCell(12);
+
+			var lograte = document.createElement('h4');
+			lograte.innerText = translationLoader.t("Logging level")+':';
+			lograte.setAttribute('style', 'font-weight:bold;');
+			cell1.appendChild(lograte);
+
+			var lograte_value = document.createElement('input');
+			lograte_value.setAttribute('type', 'text');
+			lograte_value.setAttribute('id', 'text_0_mode6_' + i);
+			lograte_value.setAttribute('value', mode6Array[0]);
+			lograte_value.classList.add('input-small');
+			lograte_value.setAttribute('title', 'Python Only = 2, Basic = 62, All = 1, None = 0');
+			cell2.appendChild(lograte_value);
+
+			var update_cycle = document.createElement('h4');
+			update_cycle.innerText = translationLoader.t("Update cycle")+':';
+			update_cycle.setAttribute('style', 'font-weight:bold;');
+			cell3.appendChild(update_cycle);
+
+			var update_cycle_value = document.createElement('input');
+			update_cycle_value.setAttribute('type', 'text');
+			update_cycle_value.setAttribute('id', 'text_1_mode6_' + i);
+			update_cycle_value.setAttribute('value', mode6Array[1]);
+			update_cycle_value.classList.add('input-small');
+			cell4.appendChild(update_cycle_value); 
+
+			var update_cycle = document.createElement('h4');
+			update_cycle.innerText = translationLoader.t("CalcUpdate cycle")+':';
+			update_cycle.setAttribute('style', 'font-weight:bold;');
+			cell5.appendChild(update_cycle);
+
+			var update_cycle_value = document.createElement('input');
+			update_cycle_value.setAttribute('type', 'text');
+			update_cycle_value.setAttribute('id', 'text_2_mode6_' + i);
+			update_cycle_value.setAttribute('value', mode6Array[2]);
+			update_cycle_value.classList.add('input-small');
+			cell6.appendChild(update_cycle_value); 
+
+			var p1 = document.createElement('h4');
+			p1.innerText = translationLoader.t("P1 meter")+':';
+			p1.setAttribute('style', 'font-weight:bold;');
+			cell7.appendChild(p1);
+
+			var p1_value = document.createElement('input');
+			p1_value.setAttribute('type', 'text');
+			p1_value.setAttribute('id', 'text_3_mode6_' + i);
+			p1_value.setAttribute('value', mode6Array[3]);
+			p1_value.classList.add('input-p1');
+			cell8.appendChild(p1_value);
+
+			var presence_detection = document.createElement('h4');
+			presence_detection.innerText = translationLoader.t("Presence detection name")+':';
+			presence_detection.setAttribute('style', 'font-weight:bold;');
+			cell9.appendChild(presence_detection);
+
+			var presence_detection_value = document.createElement('input');
+			presence_detection_value.setAttribute('type', 'text');
+			presence_detection_value.setAttribute('id', 'text_4_mode6_' + i);
+			presence_detection_value.setAttribute('value', mode6Array[4]);
+			presence_detection_value.classList.add('input-normal');
+			cell10.appendChild(presence_detection_value);
+
+			var login_mail = document.createElement('h4');
+			login_mail.innerText = translationLoader.t("Login name (email)")+':';
+			login_mail.setAttribute('style', 'font-weight:bold;');
+			cell11.appendChild(login_mail);
+
+			var login_mail_value = document.createElement('input');
+			login_mail_value.setAttribute('type', 'text');
+			login_mail_value.setAttribute('id', 'text_5_mode6_' + i);
+			login_mail_value.setAttribute('value', mode6Array[5]);
+			login_mail_value.classList.add('input-normal');
+			cell12.appendChild(login_mail_value);
+
+			for (let z = 1; z <= 12; z++) {
+				const zoneBlock = document.createElement('div');
+				zoneBlock.classList.add('device-block', 'zone-block');
+				zoneBlock.setAttribute('data-zone', z);
+				const zoneTitle = document.createElement('h1');
+				zoneTitle.innerText = z + ". " + translationLoader.t("Zone");
+				zoneBlock.appendChild(zoneTitle);
+				zonesBlock.appendChild(zoneBlock);
+
+				dropBlockConfigs.push({
+					mode: 'Mode1',
+					title: "Zone thermometer|s|",
+					link: "➕ Add zone thermometer",
+					forparam: "tempnameakt",
+					modePrefix: `Z_${z}`,
+					targetId: `thermometer_add_${z}`,
+					datasetKey: `z_${z}`,
+					inputName: `thermometer_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				dropBlockConfigs.push({
+					mode: 'Mode1',
+					title: "Zone Console",
+					link: "➕ Add zone console",
+					forparam: "consolenameakt",
+					modePrefix: `C_${z}`,
+					targetId: `console_add_${z}`,
+					datasetKey: `c_${z}`,
+					inputName: `console_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				dropBlockConfigs.push({
+					mode: 'Mode1',
+					title: "Window and door opening sensor|s|",
+					link: "➕ Add zone opening sensor",
+					forparam: "doornameakt",
+					modePrefix: `A_${z}`,
+					targetId: `door_add_${z}`,
+					datasetKey: `a_${z}`,
+					inputName: `door_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				dropBlockConfigs.push({
+					mode: 'Mode1',
+					title: "Zone TRV|s|",
+					link: "➕ Add zone TRV",
+					forparam: "trvnameakt",
+					modePrefix: `V_${z}`,
+					targetId: `trv_add_${z}`,
+					datasetKey: `v_${z}`,
+					inputName: `trv_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				dropBlockConfigs.push({
+					mode: 'Mode2',
+					title: "Heating valve|s|",
+					link: "➕ Add heating valve",
+					forparam: "switchnameakt",
+					modePrefix: `Z_${z}_F`,
+					targetId: `heating_add_${z}`,
+					datasetKey: `ZF_${z}`,
+					inputName: `heating_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				dropBlockConfigs.push({
+					mode: 'Mode2',
+					title: "Virtual hydraulic shifter heating",
+					link: "➕ Add virtual hydraulic shifter",
+					forparam: "switchnameakt",
+					modePrefix: `Z_${z}_F_V`,
+					targetId: `virtualf_add_${z}`,
+					datasetKey: `vf_${z}`,
+					inputName: `virtualf_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				// AC heating setup ----------------------------------------------
+
+				const klimaWrapperF = document.createElement('div');
+				klimaWrapperF.classList.add('klimaWrapper');
+
+				// --- Cím ---
+				const klimaTitle = document.createElement('div');
+				klimaTitle.innerText = translationLoader.t("Heating Air Conditioner Settings Tasmota IR");
+				klimaTitle.classList.add('paramname');
+				klimaWrapperF.appendChild(klimaTitle);
+
+				// --- Tartalom külön div-ben ---
+				const klimaContentF = document.createElement('div');
+				klimaContentF.classList.add('klimaContent');
+
+				// --- Gyártó ---
+				const labelVendor = document.createElement('label');
+				labelVendor.innerText = translationLoader.t("Vendor") + ':';
+				labelVendor.setAttribute('for', `Fvendor_${i}_${z}`);
+				labelVendor.classList.add('label-normal');
+				klimaContentF.appendChild(labelVendor);
+
+				const selectVendor = document.createElement('select');
+				selectVendor.id = `Fvendor_${i}_${z}`;
+				selectVendor.name = `Fvendor_${i}_${z}`;
+				selectVendor.classList.add('select-120');
+
+				[
+				"AUTO","AIRTON","AIRWELL","AIWA_RC_T501","AMCOR","ARGO","ARRIS","BOSCH144","BOSE","CARRIER_AC","CARRIER_AC128","CARRIER_AC40","CARRIER_AC64","CARRIER_AC84","CLIMABUTLER","COOLIX","COOLIX48","CORONA_AC","DAIKIN","DAIKIN128","DAIKIN152","DAIKIN160","DAIKIN176","DAIKIN2","DAIKIN200","DAIKIN216","DAIKIN312","DAIKIN64","DELONGHI_AC","DENON","DISH","DOSHISHA","ECOCLIM","ELECTRA_AC","ELITESCREENS","EPSON","FUJITSU_AC","GICABLE","GOODWEATHER","GORENJE","GREE","HAIER_AC","HAIER_AC160","HAIER_AC176","HAIER_AC_YRW02","HITACHI_AC","HITACHI_AC1","HITACHI_AC2","HITACHI_AC264","HITACHI_AC296","HITACHI_AC3","HITACHI_AC344","HITACHI_AC424","INAX","JVC","KELON","KELON168","KELVINATOR","LASERTAG","LEGOPF","LG","LG2","LUTRON","MAGIQUEST","METZ","MIDEA","MIDEA24","MILESTAG2","MIRAGE","MITSUBISHI","MITSUBISHI112","MITSUBISHI136","MITSUBISHI2","MITSUBISHI_AC","MITSUBISHI_HEAVY_152","MITSUBISHI_HEAVY_88","MULTIBRACKETS","MWM","NEC","NEC_LIKE","NEOCLIMA","NIKAI","PANASONIC","PANASONIC_AC","PANASONIC_AC32","PIONEER","RC5","RC5X","RC6","RCMM","RHOSS","SAMSUNG","SAMSUNG36","SAMSUNG_AC","SANYO","SANYO_AC","SANYO_AC152","SANYO_AC88","SANYO_LC7461","SHARP","SHARP_AC","SONY","SYMPHONY","TCL112AC","TCL96AC","TECHNIBEL_AC","TECO","TEKNOPOINT","TOSHIBA_AC","TOTO","TRANSCOLD","TROTEC","TROTEC_3550","TRUMA","VESTEL_AC","VOLTAS","WHIRLPOOL_AC","WHYNTER","WOWWEE","XMP","YORK","ZEPEAL"
+				].forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectVendor.appendChild(opt);
+				});
+
+				let vendorValue = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "F")?.type || "-";
+				selectVendor.value = vendorValue;
+				klimaContentF.appendChild(selectVendor);
+
+				// --- Tasmota IP ---
+				const labelIP = document.createElement('label');
+				labelIP.innerText = translationLoader.t("Tasmota IP address") + ': ';
+				labelIP.setAttribute('for', `Fip_${i}_${z}`);
+				labelIP.style.marginLeft = '20px';
+				labelIP.classList.add('label-12');
+				klimaContentF.appendChild(labelIP);
+
+				const inputIP = document.createElement('input');
+				inputIP.type = 'text';
+				inputIP.id = `Fip_${i}_${z}`;
+				inputIP.name = `Fip_${i}_${z}`;
+				inputIP.setAttribute('value', dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "F")?.IP || "-");
+				inputIP.classList.add('input-normal');
+				klimaContentF.appendChild(inputIP);
+
+				// --- Ventilátor ---
+				const labelFan = document.createElement('label');
+				labelFan.innerText = translationLoader.t("Fan speed") + ':';
+				labelFan.setAttribute('for', `Ffanspeed_${i}_${z}`);
+				labelFan.style.marginLeft = '20px';
+				labelFan.classList.add('label-normal');
+				klimaContentF.appendChild(labelFan);
+
+				const selectFan = document.createElement('select');
+				selectFan.id = `Ffanspeed_${i}_${z}`;
+				selectFan.name = `Ffanspeed_${i}_${z}`;
+				selectFan.classList.add('select-normal');
+
+				const fanOptions = ["Auto", "Low", "Medium", "High", "Max"];
+				fanOptions.forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectFan.appendChild(opt);
+				});
+
+				const fanspeedMap = {
+					0: "Auto",
+					1: "Low",
+					2: "Medium",
+					3: "High",
+					4: "Max"
+				};
+
+				let fanValueNum = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "F")?.fanspeed;
+				let fanValue = fanspeedMap[fanValueNum] || "Auto";
+				selectFan.value = fanValue;
+				klimaContentF.appendChild(selectFan);
+
+				// --- SwingV ---
+				const labelSwingV = document.createElement('label');
+				labelSwingV.innerText = translationLoader.t("Vertical swing") + ':';
+				labelSwingV.setAttribute('for', `Fswingv_${i}_${z}`);
+				labelSwingV.style.marginLeft = '20px';
+				labelSwingV.classList.add('label-normal');
+				klimaContentF.appendChild(labelSwingV);
+
+				const selectSwingV = document.createElement('select');
+				selectSwingV.id = `Fswingv_${i}_${z}`;
+				selectSwingV.name = `Fswingv_${i}_${z}`;
+				selectSwingV.classList.add('select-normal');
+
+				const swingVOptions = ["Off", "Auto"];
+				swingVOptions.forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectSwingV.appendChild(opt);
+				});
+
+				const swingVMap = {
+					0: "Off",
+					1: "Auto"
+				};
+
+				let swingvNum = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "F")?.swingv;
+				let swingvValue = swingVMap[swingvNum] || "Off";
+				selectSwingV.value = swingvValue;
+				klimaContentF.appendChild(selectSwingV);
+
+				// --- SwingH ---
+				const labelSwingH = document.createElement('label');
+				labelSwingH.innerText = translationLoader.t("Horizontal swing") + ':';
+				labelSwingH.setAttribute('for', `Fswingh_${i}_${z}`);
+				labelSwingH.style.marginLeft = '20px';
+				labelSwingH.classList.add('label-normal');
+				klimaContentF.appendChild(labelSwingH);
+
+				const selectSwingH = document.createElement('select');
+				selectSwingH.id = `Fswingh_${i}_${z}`;
+				selectSwingH.name = `Fswingh_${i}_${z}`;
+				selectSwingH.classList.add('select-normal');
+
+				const swingHOptions = ["Off", "Auto"];
+				swingHOptions.forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectSwingH.appendChild(opt);
+				});
+
+				const swingHMap = {
+					0: "Off",
+					1: "Auto"
+				};
+
+				let swinghNum = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "F")?.swingh;
+				let swinghValue = swingHMap[swinghNum] || "Off";
+				selectSwingH.value = swinghValue;
+				klimaContentF.appendChild(selectSwingH);
+
+				// --- Célkompenzáció + határ lefelé/felfelé (F) -----------------
+
+				const klimaExtraRowF = document.createElement('div');
+				klimaExtraRowF.classList.add('klimaExtraRowF');
+
+				const klimaBaseRowF = dsvt[i].klimatabla.find(r => r.zona == z && r.tipus == "F") || {};
+
+				// ---- Célkompenzáció ----
+				const labelKompF = document.createElement('label');
+				labelKompF.innerText = translationLoader.t("Target compensation") + ':';
+				labelKompF.setAttribute('for', `Fkomp_${i}_${z}`);
+				labelKompF.classList.add('label-normal');
+				klimaExtraRowF.appendChild(labelKompF);
+
+				const inputKompF = document.createElement('input');
+				inputKompF.type = 'text';
+				inputKompF.maxLength = 3;
+				inputKompF.id = `Fkomp_${i}_${z}`;
+				inputKompF.name = `Fkomp_${i}_${z}`;
+				inputKompF.classList.add('input-20');
+				inputKompF.value = klimaBaseRowF.komp ?? 0;
+				klimaExtraRowF.appendChild(inputKompF);
+
+				// ---- Szabályozási alsó határ ----
+				const labelLowF = document.createElement('label');
+				labelLowF.innerText = translationLoader.t("Dynamic limit (lower)") + ':';
+				labelLowF.setAttribute('for', `Fhatarlow_${i}_${z}`);
+				labelLowF.style.marginLeft = '20px';
+				labelLowF.classList.add('label-normal');
+				klimaExtraRowF.appendChild(labelLowF);
+
+				const inputLowF = document.createElement('input');
+				inputLowF.type = 'text';
+				inputLowF.maxLength = 3;
+				inputLowF.id = `Fhatarlow_${i}_${z}`;
+				inputLowF.name = `Fhatarlow_${i}_${z}`;
+				inputLowF.classList.add('input-20');
+				inputLowF.value = klimaBaseRowF.hatar_low ?? 0;
+				klimaExtraRowF.appendChild(inputLowF);
+
+				// ---- Szabályozási felső határ ----
+				const labelTopF = document.createElement('label');
+				labelTopF.innerText = translationLoader.t("Dynamic limit (upper)") + ':';
+				labelTopF.setAttribute('for', `Fhatartop_${i}_${z}`);
+				labelTopF.style.marginLeft = '20px';
+				labelTopF.classList.add('label-normal');
+				klimaExtraRowF.appendChild(labelTopF);
+
+				const inputTopF = document.createElement('input');
+				inputTopF.type = 'text';
+				inputTopF.maxLength = 3;
+				inputTopF.id = `Fhatartop_${i}_${z}`;
+				inputTopF.name = `Fhatartop_${i}_${z}`;
+				inputTopF.classList.add('input-20');
+				inputTopF.value = klimaBaseRowF.hatar_top ?? 0;
+				klimaExtraRowF.appendChild(inputTopF);
+
+				const klimaCheckboxRowF = document.createElement('div');
+				klimaCheckboxRowF.classList.add('klimaCheckboxRowF');
+
+				// ---- Target Off ----
+				const labelTargetOffF = document.createElement('label');
+				labelTargetOffF.innerText = translationLoader.t("Target Off") + ':';
+				labelTargetOffF.classList.add('label-normal');
+				klimaCheckboxRowF.appendChild(labelTargetOffF);
+
+				const inputTargetOffF = document.createElement('input');
+				inputTargetOffF.type = 'checkbox';
+				inputTargetOffF.id = `Ftarget_off_${i}_${z}`;
+				inputTargetOffF.name = `Ftarget_off_${i}_${z}`;
+				inputTargetOffF.checked = (klimaBaseRowF.target_off === true);
+				inputTargetOffF.style.marginLeft = "5px";
+				klimaCheckboxRowF.appendChild(inputTargetOffF);
+
+				// ---- Disabled when present ----
+
+				const labelPresenceOffF = document.createElement('label');
+				labelPresenceOffF.innerText = translationLoader.t("In case of presence") + ':';
+				labelPresenceOffF.style.marginLeft = "20px";
+				labelPresenceOffF.classList.add('label-normal');
+				klimaCheckboxRowF.appendChild(labelPresenceOffF);
+
+				const selectPresenceOffF = document.createElement('select');
+				selectPresenceOffF.id = `FAC_jelenlet_${i}_${z}`;
+				selectPresenceOffF.name = `FAC_jelenlet_${i}_${i}_${z}`;
+				selectPresenceOffF.style.marginLeft = "5px";
+
+				["None", "Off", "On"].forEach(v => {
+					const option = document.createElement('option');
+					option.value = v;
+					option.textContent = v;
+					selectPresenceOffF.appendChild(option);
+				});
+
+				// aktuális érték
+				selectPresenceOffF.value =
+					klimaBaseRowF.AC_jelenlet === "On" ? "On" :
+					klimaBaseRowF.AC_jelenlet === "Off" ? "Off" :
+					"None";
+
+				klimaCheckboxRowF.appendChild(selectPresenceOffF);
+
+
+				// --- Hozzáadás a fő tartalomhoz ---
+				klimaContentF.appendChild(klimaExtraRowF);
+				klimaContentF.appendChild(klimaCheckboxRowF);
+
+				// --- Hozzáfűzés a wrapperhez és a zónához ---
+				klimaWrapperF.appendChild(klimaContentF);
+				zoneBlock.appendChild(klimaWrapperF);
+
+
+				dropBlockConfigs.push({
+					mode: 'Mode3',
+					title: "Cooling valve|s|",
+					link: "➕ Add cooling valve",
+					forparam: "switchnameakt",
+					modePrefix: `Z_${z}_H`,
+					targetId: `cooling_add_${z}`,
+					datasetKey: `a_${z}`,
+					inputName: `cooling_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+				// AC cooling setup ----------------------------------------------
+
+				const klimaWrapperH = document.createElement('div');
+				klimaWrapperH.classList.add('klimaWrapper');
+
+				// --- Cím ---
+				const klimaTitleH = document.createElement('div');
+				klimaTitleH.innerText = translationLoader.t("Cooling air conditioner settings Tasmota IR");
+				klimaTitleH.classList.add('paramname');
+				klimaWrapperH.appendChild(klimaTitleH);
+
+				// --- Tartalom külön divben ---
+				const klimaContentH = document.createElement('div');
+				klimaContentH.classList.add('klimaContent');
+
+				// --- Gyártó ---
+				const labelVendorH = document.createElement('label');
+				labelVendorH.innerText = translationLoader.t("Vendor") + ':';
+				labelVendorH.setAttribute('for', `Hvendor_${i}_${z}`);
+				labelVendorH.classList.add('label-normal');
+				klimaContentH.appendChild(labelVendorH);
+
+				const selectVendorH = document.createElement('select');
+				selectVendorH.id = `Hvendor_${i}_${z}`;
+				selectVendorH.name = `Hvendor_${i}_${z}`;
+				selectVendorH.classList.add('select-120');
+
+				["AUTO","AIRTON","AIRWELL","AIWA_RC_T501","AMCOR","ARGO","ARRIS","BOSCH144","BOSE","CARRIER_AC","CARRIER_AC128","CARRIER_AC40","CARRIER_AC64","CARRIER_AC84","CLIMABUTLER","COOLIX","COOLIX48","CORONA_AC","DAIKIN","DAIKIN128","DAIKIN152","DAIKIN160","DAIKIN176","DAIKIN2","DAIKIN200","DAIKIN216","DAIKIN312","DAIKIN64","DELONGHI_AC","DENON","DISH","DOSHISHA","ECOCLIM","ELECTRA_AC","ELITESCREENS","EPSON","FUJITSU_AC","GICABLE","GOODWEATHER","GORENJE","GREE","HAIER_AC","HAIER_AC160","HAIER_AC176","HAIER_AC_YRW02","HITACHI_AC","HITACHI_AC1","HITACHI_AC2","HITACHI_AC264","HITACHI_AC296","HITACHI_AC3","HITACHI_AC344","HITACHI_AC424","INAX","JVC","KELON","KELON168","KELVINATOR","LASERTAG","LEGOPF","LG","LG2","LUTRON","MAGIQUEST","METZ","MIDEA","MIDEA24","MILESTAG2","MIRAGE","MITSUBISHI","MITSUBISHI112","MITSUBISHI136","MITSUBISHI2","MITSUBISHI_AC","MITSUBISHI_HEAVY_152","MITSUBISHI_HEAVY_88","MULTIBRACKETS","MWM","NEC","NEC_LIKE","NEOCLIMA","NIKAI","PANASONIC","PANASONIC_AC","PANASONIC_AC32","PIONEER","RC5","RC5X","RC6","RCMM","RHOSS","SAMSUNG","SAMSUNG36","SAMSUNG_AC","SANYO","SANYO_AC","SANYO_AC152","SANYO_AC88","SANYO_LC7461","SHARP","SHARP_AC","SONY","SYMPHONY","TCL112AC","TCL96AC","TECHNIBEL_AC","TECO","TEKNOPOINT","TOSHIBA_AC","TOTO","TRANSCOLD","TROTEC","TROTEC_3550","TRUMA","VESTEL_AC","VOLTAS","WHIRLPOOL_AC","WHYNTER","WOWWEE","XMP","YORK","ZEPEAL"].forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectVendorH.appendChild(opt);
+				});
+
+				let vendorValueH = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "H")?.type || "-";
+				selectVendorH.value = vendorValueH;
+				klimaContentH.appendChild(selectVendorH);
+
+				// --- Tasmota IP ---
+				const labelIPH = document.createElement('label');
+				labelIPH.innerText = translationLoader.t("Tasmota IP address") + ': ';
+				labelIPH.setAttribute('for', `Hip_${i}_${z}`);
+				labelIPH.style.marginLeft = '20px';
+				labelIPH.classList.add('label-12');
+				klimaContentH.appendChild(labelIPH);
+
+				const inputIPH = document.createElement('input');
+				inputIPH.type = 'text';
+				inputIPH.id = `Hip_${i}_${z}`;
+				inputIPH.name = `Hip_${i}_${z}`;
+				inputIPH.setAttribute('value', dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "H")?.IP || "-");
+				inputIPH.classList.add('input-normal');
+				klimaContentH.appendChild(inputIPH);
+
+				// --- Ventilátor ---
+				const labelFanH = document.createElement('label');
+				labelFanH.innerText = translationLoader.t("Fan speed") + ':';
+				labelFanH.setAttribute('for', `Hfanspeed_${i}_${z}`);
+				labelFanH.style.marginLeft = '20px';
+				labelFanH.classList.add('label-normal');
+				klimaContentH.appendChild(labelFanH);
+
+				const selectFanH = document.createElement('select');
+				selectFanH.id = `Hfanspeed_${i}_${z}`;
+				selectFanH.name = `Hfanspeed_${i}_${z}`;
+				selectFanH.classList.add('select-normal');
+
+				["Auto", "Low", "Medium", "High", "Max"].forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectFanH.appendChild(opt);
+				});
+
+				const fanspeedMapH = {
+					0: "Auto",
+					1: "Low",
+					2: "Medium",
+					3: "High",
+					4: "Max"
+				};
+
+				let fanValueNumH = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "H")?.fanspeed;
+				let fanValueH = fanspeedMapH[fanValueNumH] || "Auto";
+				selectFanH.value = fanValueH;
+				klimaContentH.appendChild(selectFanH);
+
+				// --- SwingV ---
+				const labelSwingVH = document.createElement('label');
+				labelSwingVH.innerText = translationLoader.t("Vertical swing") + ':';
+				labelSwingVH.setAttribute('for', `Hswingv_${i}_${z}`);
+				labelSwingVH.style.marginLeft = '20px';
+				labelSwingVH.classList.add('label-normal');
+				klimaContentH.appendChild(labelSwingVH);
+
+				const selectSwingVH = document.createElement('select');
+				selectSwingVH.id = `Hswingv_${i}_${z}`;
+				selectSwingVH.name = `Hswingv_${i}_${z}`;
+				selectSwingVH.classList.add('select-normal');
+
+				["Off", "Auto"].forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectSwingVH.appendChild(opt);
+				});
+
+				const swingVMapH = {
+					0: "Off",
+					1: "Auto"
+				};
+
+				let swingvNumH = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "H")?.swingv;
+				let swingvValueH = swingVMapH[swingvNumH] || "Off";
+				selectSwingVH.value = swingvValueH;
+				klimaContentH.appendChild(selectSwingVH);
+
+				// --- SwingH ---
+				const labelSwingHH = document.createElement('label');
+				labelSwingHH.innerText = translationLoader.t("Horizontal swing") + ':';
+				labelSwingHH.setAttribute('for', `Hswingh_${i}_${z}`);
+				labelSwingHH.style.marginLeft = '20px';
+				labelSwingHH.classList.add('label-normal');
+				klimaContentH.appendChild(labelSwingHH);
+
+				const selectSwingHH = document.createElement('select');
+				selectSwingHH.id = `Hswingh_${i}_${z}`;
+				selectSwingHH.name = `Hswingh_${i}_${z}`;
+				selectSwingHH.classList.add('select-normal');
+
+				["Off", "Auto"].forEach(val => {
+					const opt = document.createElement('option');
+					opt.value = val;
+					opt.textContent = val;
+					selectSwingHH.appendChild(opt);
+				});
+
+				const swingHMapH = {
+					0: "Off",
+					1: "Auto"
+				};
+
+				let swinghNumH = dsvt[i].klimatabla.find(row => row.zona == z && row.tipus == "H")?.swingh;
+				let swinghValueH = swingHMapH[swinghNumH] || "Off";
+				selectSwingHH.value = swinghValueH;
+				klimaContentH.appendChild(selectSwingHH);
+
+				klimaWrapperH.appendChild(klimaContentH);
+
+				// --- Célkompenzáció + határ lefelé/felfelé (H) -----------------
+				const klimaExtraRowH = document.createElement('div');
+				klimaExtraRowH.classList.add('klimaExtraRowH');
+
+				const klimaBaseRowH = dsvt[i].klimatabla.find(r => r.zona == z && r.tipus == "H") || {};
+
+				// ---- Célkompenzáció ----
+				const labelKompH = document.createElement('label');
+				labelKompH.innerText = translationLoader.t("Target compensation") + ':';
+				labelKompH.setAttribute('for', `Hkomp_${i}_${z}`);
+				labelKompH.classList.add('label-normal');
+				klimaExtraRowH.appendChild(labelKompH);
+
+				const inputKompH = document.createElement('input');
+				inputKompH.type = 'text';
+				inputKompH.maxLength = 3;
+				inputKompH.id = `Hkomp_${i}_${z}`;
+				inputKompH.name = `Hkomp_${i}_${z}`;
+				inputKompH.classList.add('input-20');
+				inputKompH.value = klimaBaseRowH.komp ?? 0;
+				klimaExtraRowH.appendChild(inputKompH);
+
+				// ---- Szabályozási alsó határ ----
+				const labelLowH = document.createElement('label');
+				labelLowH.innerText = translationLoader.t("Dynamic limit (lower)") + ':';
+				labelLowH.setAttribute('for', `Hhatarlow_${i}_${z}`);
+				labelLowH.style.marginLeft = '20px';
+				labelLowH.classList.add('label-normal');
+				klimaExtraRowH.appendChild(labelLowH);
+
+				const inputLowH = document.createElement('input');
+				inputLowH.type = 'text';
+				inputLowH.maxLength = 3;
+				inputLowH.id = `Hhatarlow_${i}_${z}`;
+				inputLowH.name = `Hhatarlow_${i}_${z}`;
+				inputLowH.classList.add('input-20');
+				inputLowH.value = klimaBaseRowH.hatar_low ?? 0;
+				klimaExtraRowH.appendChild(inputLowH);
+
+				// ---- Szabályozási felső határ ----
+				const labelTopH = document.createElement('label');
+				labelTopH.innerText = translationLoader.t("Dynamic limit (upper)") + ':';
+				labelTopH.setAttribute('for', `Hhatartop_${i}_${z}`);
+				labelTopH.style.marginLeft = '20px';
+				labelTopH.classList.add('label-normal');
+				klimaExtraRowH.appendChild(labelTopH);
+
+				const inputTopH = document.createElement('input');
+				inputTopH.type = 'text';
+				inputTopH.maxLength = 3;
+				inputTopH.id = `Hhatartop_${i}_${z}`;
+				inputTopH.name = `Hhatartop_${i}_${z}`;
+				inputTopH.classList.add('input-20');
+				inputTopH.value = klimaBaseRowH.hatar_top ?? 2;
+				klimaExtraRowH.appendChild(inputTopH);
+
+				const klimaCheckboxRowH = document.createElement('div');
+				klimaCheckboxRowH.classList.add('klimaCheckboxRowH');
+
+				// ---- Target Off (checkbox) ----
+				const labelTargetOffH = document.createElement('label');
+				labelTargetOffH.innerText = translationLoader.t("Target Off") + ':';
+				labelTargetOffH.classList.add('label-normal');
+				klimaCheckboxRowH.appendChild(labelTargetOffH);
+
+				const inputTargetOffH = document.createElement('input');
+				inputTargetOffH.type = 'checkbox';
+				inputTargetOffH.id = `Htarget_off_${i}_${z}`;
+				inputTargetOffH.name = `Htarget_off_${i}_${z}`;
+				inputTargetOffH.checked = (klimaBaseRowH.target_off === true);
+				inputTargetOffH.style.marginLeft = "5px";
+				klimaCheckboxRowH.appendChild(inputTargetOffH);
+
+				// ---- Disabled when present (dropdown) ----
+				const labelPresenceOffH = document.createElement('label');
+				labelPresenceOffH.innerText = translationLoader.t("In case of presence") + ':';
+				labelPresenceOffH.style.marginLeft = "20px";
+				labelPresenceOffH.classList.add('label-normal');
+				klimaCheckboxRowH.appendChild(labelPresenceOffH);
+
+				const selectPresenceOffH = document.createElement('select');
+				selectPresenceOffH.id = `HAC_jelenlet_${i}_${z}`;
+				selectPresenceOffH.name = `HAC_jelenlet_${i}_${z}`;
+				selectPresenceOffH.style.marginLeft = "5px";
+
+				["None", "Off", "On"].forEach(v => {
+					const option = document.createElement('option');
+					option.value = v;
+					option.textContent = v;
+					selectPresenceOffH.appendChild(option);
+				});
+
+				// aktuális érték beállítása
+				selectPresenceOffH.value =
+					klimaBaseRowH.AC_jelenlet === "On" ? "On" :
+					klimaBaseRowH.AC_jelenlet === "Off" ? "Off" :
+					"None";
+
+				klimaCheckboxRowH.appendChild(selectPresenceOffH);
+
+
+				// --- Hozzáadás a H tartalomhoz ---
+				klimaContentH.appendChild(klimaExtraRowH);
+				klimaContentH.appendChild(klimaCheckboxRowH);
+
+				zoneBlock.appendChild(klimaWrapperH);
+
+				// Virtuális hidraulikus váltó
+
+				dropBlockConfigs.push({
+					mode: 'Mode3',
+					title: "Virtual hydraulic shifter cooling",
+					link: "➕ Add virtual hydraulic shifter",
+					forparam: "switchnameakt",
+					modePrefix: `Z_${z}_H_V`,
+					targetId: `virtualh_add_${z}`,
+					datasetKey: `vh_${z}`,
+					inputName: `virtualh_id_${z}`
+				});
+				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
+
+
+				if (base_ids[z]) {
+					const setpointWrapper = document.createElement('div');
+					setpointWrapper.classList.add('setpoint-wrapper');
+					setpointWrapper.style.marginTop = '15px';
+
+					const setpointTitle = document.createElement('h2');
+					setpointTitle.innerText = translationLoader.t("Setpoint configuration");
+					setpointWrapper.appendChild(setpointTitle);
+					setpointWrapper.appendChild(document.createElement('br'));
+
+
+					base_ids[z].forEach((unit, index) => {
+						const row = document.createElement('div');
+						row.style.display = 'flex';
+						row.style.alignItems = 'center';
+						row.style.gap = '10px';
+						row.style.marginBottom = '8px';
+
+						// Egyezés keresése Unit (parts[0]) alapján
+						const match = dsvt[i].setpointnameakt.find(entry => {
+							const parts = entry.split(':');
+							return parseInt(parts[0]) === unit;
+						});
+
+						let name = '—';
+						let value = '';
+						if (match) {
+							const parts = match.split(':');
+							name = parts[1];  // név
+							value = parts[3]; // érték
+						}
+
+						// Név input
+						const nameInput = document.createElement('input');
+						nameInput.type = 'text';
+						nameInput.value = name;
+						nameInput.classList.add('setpoint-name');
+						nameInput.id = `setpoint_name_${i}_${z}_${index}`;
+						row.appendChild(nameInput);
+
+						// Érték input (szám)
+						const valueInput = document.createElement('input');
+						valueInput.type = 'number';
+						valueInput.step = '0.1';
+						valueInput.value = value;
+						valueInput.id = `setpoint_value_${i}_${z}_${index}`;
+						valueInput.classList.add('setpoint-number');
+						row.appendChild(valueInput);
+
+						// Celsius egység
+						const unitSpan = document.createElement('span');
+						unitSpan.innerText = '°C';
+						row.appendChild(unitSpan);
+
+						setpointWrapper.appendChild(row);
+					});
+
+					zoneBlock.appendChild(setpointWrapper);
+				}
+			}
+
+		hideSaveStatus();
+
+		// adatgyujtes ---------------------------------------------------------
+
+		var table = document.createElement('table');
+		table.setAttribute('style', 'border-spacing: 5px; width:100%');
+		document.getElementById('dsvt_hmv_zone_12_content').appendChild(table);
+		var row = table.insertRow();
+		var cell1 = row.insertCell(0);
+		var cell2 = row.insertCell(1);
+		var cell3 = row.insertCell(2);
+		var cell4 = row.insertCell(3);
+
+		var submitButton = document.createElement('input');
+		submitButton.setAttribute('type', 'submit');
+		submitButton.classList.add('save-data');
+		submitButton.setAttribute('value', translationLoader.t("Save"));
+		submitButton.setAttribute('id', 'submitBtn_' + i);
+		cell2.appendChild(submitButton);
+
+		document.getElementById('submitBtn_' + i).addEventListener('click', (function (i_copy) {
+
+			return function () {
+				let mode1List = [], mode2List = [], mode3List = [], mode4List = [], mode5List = [];
+				let setpointUpdates = [];
+				let data = {
+					Mode1: [], Mode2: [], Mode3: [],
+					Mode4: [], Mode5: [], Mode6: []
+				};
+
+				for (var j = 0; j < 6; j++) {
+					let el = document.getElementById('text_' + j + '_mode6_' + i_copy);
+					if (el) data.Mode6.push(el.value);
+				}
+
+				dropBlockConfigs.forEach(cfg => {
+					let zone = document.getElementById(cfg.targetId+'_'+i_copy);
+					if (!zone || !zone.dataset[cfg.datasetKey]) return;
+
+					let ids = zone.dataset[cfg.datasetKey].split(',').filter(Boolean);
+					ids.forEach(id => {
+						let item = cfg.modePrefix ? `${cfg.modePrefix}:${id}` : id;
+						switch (cfg.mode) {
+							case 'Mode1': mode1List.push(item); break;
+							case 'Mode2': mode2List.push(item); break;
+							case 'Mode3': mode3List.push(item); break;
+							case 'Mode4': mode4List.push(item); break;
+							case 'Mode5': mode5List.push(item); break;
+						}
+					});
+				});
+
+				for (let z = 1; z <= 12; z++) {
+					if (!base_ids[z]) continue;
+
+					base_ids[z].forEach((unit, index) => {
+						let match = dsvt[i_copy].setpointnameakt.find(entry => parseInt(entry.split(':')[0]) === unit);
+						if (!match) return;
+
+						let [_, originalName, originalIdx, originalValue] = match.split(':');
+						let nameInput = document.getElementById(`setpoint_name_${i_copy}_${z}_${index}`);
+						let valueInput = document.getElementById(`setpoint_value_${i_copy}_${z}_${index}`);
+						if (!nameInput || !valueInput) return;
+
+						let currentName = nameInput.value.trim();
+						let currentValue = parseFloat(valueInput.value.trim());
+						let originalValFloat = parseFloat(originalValue);
+
+						if (originalName !== currentName || Math.abs(currentValue - originalValFloat) > 0.001) {
+							setpointUpdates.push({
+								idx: parseInt(originalIdx),
+								name: currentName,
+								value: currentValue
+							});
+						}
+					});
+				}
+
+				const port = window.location.port ? ":" + window.location.port : "";
+				const mode1QueryString = "Mode1=" + encodeURIComponent(mode1List.join(','));
+				const mode2QueryString = "Mode2=" + encodeURIComponent(mode2List.join(','));
+				const mode3QueryString = "Mode3=" + encodeURIComponent(mode3List.join(','));
+				const mode4QueryString = "Mode4=" + encodeURIComponent(mode4List.join(','));
+				const mode5QueryString = "Mode5=" + encodeURIComponent(mode5List.join(','));
+				const mode6QueryString = "Mode6=" + encodeURIComponent(data.Mode6.join(','));
+
+				const url = `${window.location.protocol}//${window.location.hostname}${port}/json.htm?type=command&param=updatehardware&htype=94&loglevel=7&extra=DSVT_HMV_ZONE_12&idx=${dsvt[i_copy].id}&enabled=true&datatimeout=0&name=${dsvt[i_copy].name}&address=${dsvt[i_copy].host}&port=${dsvt[i_copy].port}&username=${dsvt[i_copy].uname}&password=${dsvt[i_copy].pass}&${mode1QueryString}&${mode2QueryString}&${mode3QueryString}&${mode4QueryString}&${mode5QueryString}&${mode6QueryString}`;
+				
+				showSaveStatus();
+				logToScreen("Elindult");
+
+				for (let z = 1; z <= 12; z++) {
+					["F", "H"].forEach(tipus => {
+						const varname = `${dsvt[i_copy].name}_Z_${z}_AC_${tipus}`;
+						const vendor = document.getElementById(`${tipus}vendor_${i_copy}_${z}`)?.value;
+						const ip = document.getElementById(`${tipus}ip_${i_copy}_${z}`)?.value;
+						const fanspeed = document.getElementById(`${tipus}fanspeed_${i_copy}_${z}`)?.value;
+						const swingv = document.getElementById(`${tipus}swingv_${i_copy}_${z}`)?.value;
+						const swingh = document.getElementById(`${tipus}swingh_${i_copy}_${z}`)?.value;
+						const komp = document.getElementById(`${tipus}komp_${i_copy}_${z}`)?.value;
+						const hatar_low = document.getElementById(`${tipus}hatarlow_${i_copy}_${z}`)?.value;
+						const hatar_top = document.getElementById(`${tipus}hatartop_${i_copy}_${z}`)?.value;
+						const target_off = document.getElementById(`${tipus}target_off_${i_copy}_${z}`)?.checked ? true : false;
+						const AC_jelenlet = document.getElementById(`${tipus}AC_jelenlet_${i_copy}_${z}`)?.value || "None";
+
+						if (vendor === undefined || ip === undefined || fanspeed === undefined ||
+							swingv === undefined || swingh === undefined ||
+							komp === undefined || hatar_low === undefined || hatar_top === undefined)
+							return;
+
+						const jsonData = {
+							type: vendor,
+							IP: ip,
+							fanspeed: fanOptions.indexOf(fanspeed),
+							swingv: swingVOptions.indexOf(swingv),
+							swingh: swingHOptions.indexOf(swingh),
+							komp: Number(komp),
+							hatar_low: Number(hatar_low),
+							hatar_top: Number(hatar_top),
+							target_off: target_off,
+							AC_jelenlet: AC_jelenlet
+						};
+
+						const value = JSON.stringify(jsonData);
+						const setvarurl = `${window.location.protocol}//${window.location.hostname}${port}/json.htm?type=command&param=updateuservariable&vname=${encodeURIComponent(varname)}&vtype=2&vvalue=${encodeURIComponent(value)}`;
+
+						//console.log("Küldés:", setvarurl);
+						try {
+							const xhr = new XMLHttpRequest();
+							xhr.open("GET", setvarurl, false); // szinkron
+							xhr.send();
+						} catch (e) {
+							console.error("Hiba a uservariable mentésnél:", e);
+						}
+					});
+				}
+
+
+
+				function sendRequest(url) {
+					console.log("sendRequest elindult:", url);
+					try {
+						const xhr = new XMLHttpRequest();
+						xhr.open("GET", url, true);
+						xhr.send();
+						showLogStatus();
+						console.log("Updatehardware elkuldve.");
+						logToScreen("Updatehardware elkuldve.");
+					} catch (e) {
+						console.error("Hiba a sendRequest-ben:", e);
+						logToScreen("Updatehardware elkuldve.");
+					}
+				}
+
+				function sendSetpointUpdatesSequentiallyWithDelay(updates, callback) {
+
+					if (!updates || updates.length === 0) {
+						callback();
+						return;
+					}
+
+					const update = updates.shift();
+					const idx_copy = update.idx;
+					const maxRetries = 3;
+					let attempt = 0;
+
+					function trySend() {
+						attempt++;
+						logToScreen(`(${idx_copy}) Próbálkozás ${attempt}/${maxRetries}: ${update.name} → ${update.value}°C`);
+
+						const setpointurl = `${window.location.protocol}//${dsvt[i_copy].uname}:${dsvt[i_copy].pass}@${window.location.hostname}${port}/json.htm?type=setused&idx=${update.idx}&name=${encodeURIComponent(update.name)}&setpoint=${encodeURIComponent(update.value)}&protected=false&used=true`;
+
+						const xhr = new XMLHttpRequest();
+						let completed = false;
+
+						xhr.open("GET", setpointurl, true);
+
+						xhr.onreadystatechange = function () {
+							if (xhr.readyState === 4) {
+								completed = true;
+								if (xhr.status === 200) {
+									logToScreen(`(${idx_copy}) Sikeres küldés.`);
+									setTimeout(() => {
+										sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
+									}, 1000);
+								} else {
+									logToScreen(`(${idx_copy}) Hiba: ${xhr.status}`);
+									retryOrSkip();
+								}
+							}
+						};
+
+						xhr.onerror = function () {
+							logToScreen(`(${idx_copy}) Hálózati hiba`);
+							retryOrSkip();
+						};
+
+						function retryOrSkip() {
+							if (attempt < maxRetries) {
+								setTimeout(() => trySend(), 5000); // újrapróbálkozás kis késleltetéssel
+							} else {
+								logToScreen(`(${idx_copy}) Túl sok hiba, kihagyva.`);
+								setTimeout(() => {
+									sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
+								}, 1000);
+							}
+						}
+
+						try {
+							xhr.send();
+							setTimeout(() => {
+								if (!completed) {
+									logToScreen(`(${idx_copy}) Timeout történt`);
+									retryOrSkip();
+								}
+							}, 3000);
+						} catch (e) {
+							logToScreen(`(${idx_copy}) Kivétel: ${e.message}`);
+							retryOrSkip();
+						}
+					}
+
+					trySend();
+				}
+
+				sendRequest(url);
+
+				setTimeout(() => {
+					sendSetpointUpdatesSequentiallyWithDelay([...setpointUpdates], () => {
+						console.log("Minden setpoint frissitve...");
+						logToScreen("Minden setpoint frissítve.");
+						setTimeout(() => {
+							logToScreen("Frissítés kész, újratöltés...");
+							location.reload();
+						}, 1000);
+					});
+				}, 5000);
+			};
+
+		})(i));
+
+	}
+}
+});
+</script>
