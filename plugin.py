@@ -6893,17 +6893,19 @@ class BasePlugin:
 			Domoticz.Debug("Van self.met_data_string")
 			self.find_future_temperature()
 
-			if self.closest_temp is not None: 
+			if self.closest_temp is not None:
 				self.FutureTemp = float(self.closest_temp)
-			else :
+			else:
 				self.FutureTemp = self.outtemp
 				Domoticz.Error("Hiba a self.closest_temp kalkulacional")
 
 			Devices[131].Update(nValue=0, sValue=str(self.FutureTemp), TimedOut=False)
-		else :
+
+		else:
 			Domoticz.Debug("Nincs sef.ido es/vagy self.met_data_string")
 			self.FutureTemp = self.outtemp
 			Devices[131].Update(nValue=0, sValue=str(0), TimedOut=False)
+
 		
 		Domoticz.Debug("listouttemps" + format(listouttemps))
 		Domoticz.Debug("self.nowtemp" + format(self.nowtemp))
@@ -12401,23 +12403,134 @@ class BasePlugin:
 
 			host = weather_hosts.get(lang)
 
-			# URL összeállítása
-			url = f"{host}/data.nof?Latitude={self.location[0]}&Longitude={self.location[1]}&Type=temp,dewpoint&Login={self.loginemail}"
-			Domoticz.Debug(f"Hívás LatLonNapTempAPI: {url}")
+			if host:
+				host = str(host).strip().rstrip("/")
 
-			# Kérés elküldése
-			req = request.Request(url)
-			response = request.urlopen(req, timeout=10)
+			Domoticz.Debug(
+				f"LatLonNapTempAPI: lang={lang}, host='{host}', login='{self.loginemail}'"
+			)
 
-			if response.status == 200:
-				LatLonNapTemp = json.loads(response.read().decode('utf-8'))
+			# ---------------------------------------------------------
+			# Nyelvspecifikus időjárás API
+			# ---------------------------------------------------------
+			if (
+				host
+				and (host.startswith("http://") or host.startswith("https://"))
+				and self.loginemail
+			):
+
+				url = (
+					f"{host}/data.nof"
+					f"?Latitude={self.location[0]}"
+					f"&Longitude={self.location[1]}"
+					f"&Type=temp"
+					f"&Login={self.loginemail}"
+				)
+
+				Domoticz.Debug(f"Hívás LatLonNapTempAPI saját API: {url}")
+
+				req = request.Request(url)
+				response = request.urlopen(req, timeout=10)
+
+				if response.status == 200:
+
+					raw_data = json.loads(
+						response.read().decode("utf-8")
+					)
+
+					# -------------------------------------------------
+					# MAGYAR API feldolgozás
+					# -------------------------------------------------
+					if lang == "HU":
+
+						LatLonNapTemp = raw_data
+
+					# -------------------------------------------------
+					# Későbbi olasz API feldolgozás
+					# -------------------------------------------------
+					elif lang == "IT":
+
+						LatLonNapTemp = raw_data
+
+					# -------------------------------------------------
+					# Későbbi német API feldolgozás
+					# -------------------------------------------------
+					elif lang == "DE":
+
+						LatLonNapTemp = raw_data
+
+					# -------------------------------------------------
+					# Ismeretlen saját API
+					# -------------------------------------------------
+					else:
+
+						LatLonNapTemp = raw_data
+
+				else:
+					Domoticz.Error(
+						f"LatLonNapTempAPI saját API: HTTP hiba = {response.status}"
+					)
+
+				response.close()
+
+			# ---------------------------------------------------------
+			# Nincs használható nyelvspecifikus API
+			# Open-Meteo
+			# ---------------------------------------------------------
 			else:
-				Domoticz.Error(f"LatLonNapTempAPI: HTTP hiba = {response.status}")
 
-			response.close()
+				url = (
+					"https://api.open-meteo.com/v1/forecast"
+					f"?latitude={self.location[0]}"
+					f"&longitude={self.location[1]}"
+					"&hourly=temperature_2m"
+					"&timezone=auto"
+					"&forecast_days=2"
+				)
+
+				Domoticz.Debug(f"Hívás LatLonNapTempAPI Open-Meteo: {url}")
+
+				req = request.Request(url)
+				response = request.urlopen(req, timeout=10)
+
+				if response.status == 200:
+
+					raw_data = json.loads(
+						response.read().decode("utf-8")
+					)
+
+					hourly = raw_data.get("hourly", {})
+
+					times = hourly.get("time", [])
+					temperatures = hourly.get("temperature_2m", [])
+
+					LatLonNapTemp = []
+
+					for i in range(len(times)):
+
+						datum = times[i].replace("T", " ")
+
+						if len(datum) == 16:
+							datum += ":00"
+
+						LatLonNapTemp.append({
+							"time": datum,
+							"temp": str(temperatures[i]) if i < len(temperatures) else None
+						})
+
+					Domoticz.Debug(f"Open-Meteo első rekordok: {LatLonNapTemp}")
+					
+					Domoticz.Debug(f"Open-Meteo átalakítva: {len(LatLonNapTemp)} rekord")
+
+				else:
+					Domoticz.Error(f"LatLonNapTempAPI Open-Meteo: HTTP hiba = {response.status}")
+
+				response.close()
 
 		except Exception as e:
-			Domoticz.Error(f"Hiba történt a következő API hívásakor: '{url}'. Hiba: {str(e)}")
+			Domoticz.Error(
+				f"Hiba történt a következő API hívásakor: '{url}'. Hiba: {str(e)}"
+			)
 
 		return LatLonNapTemp
 
