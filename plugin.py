@@ -1,9 +1,14 @@
 """
-Dual Smart Virtual Thermostat + HMV + 12 ZONE  valve python plugin for Domoticz
-further development: Szelessav,https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
-Weather forecast data provided by Open-Meteo (https://open-meteo.com/).
+Dual Smart Virtual Thermostat + DHW + 12-Zone Valve Python Plugin for Domoticz
+Further development by Szelessav:
+https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
+
+Weather forecast data provided by Open-Meteo:
+https://open-meteo.com/
+
 Weather data is licensed under CC BY 4.0.
-Version: 1.2.1 (2026-01-01)
+
+Version: 1.2.1 (2026-10-09)
 """
 """
 <plugin key="DSVT_HMV_ZONE_12" name="DSVT + HMV (DHW) + 12 ZONE" author="Szelessav" version="1.2.1" externallink="https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer">
