@@ -303,29 +303,27 @@ Go to **Setup → Settings → System → Location** and enter the real latitude
 
 DSVT uses these coordinates for location-dependent weather information and heating/cooling calculations. Missing or incorrect coordinates may produce inaccurate results. Do not rely on the plugin's fallback location for normal operation.
 
-<!-- Add a screenshot to docs/images/domoticz-location.png, then remove these comment markers:
 ![Domoticz geographic location settings](docs/images/domoticz-location.png)
--->
 
 ### 2. Allow local Domoticz API access
 
-Go to **Setup → Settings → Security → Local Networks (no username/password)** and add:
+Go to **Setup → Settings → Security → Trusted Networks (no username/password)** and add:
 
 `127.0.0.1`
 
 DSVT calls the local Domoticz API to create and update user variables and perform other operations. Without this exception, these requests may return **HTTP 401 Unauthorized**, preventing parts of DSVT from working. Allow only the required loopback address; do not disable authentication for other networks.
 
-<!-- Add a screenshot to docs/images/domoticz-local-networks.png, then remove these comment markers:
 ![Domoticz local networks API access setting](docs/images/domoticz-local-networks.png)
--->
 
 Save both settings before the first DSVT startup.
 
 Clone the repository into the Domoticz plugin directory:
 
+```sh
 cd /etc/domoticz/plugins
 git clone https://github.com/szelessavalapitvany/Domoticz-DSVT.git DSVT_HMV_ZONE_12
 cp -r /etc/domoticz/plugins/DSVT_HMV_ZONE_12/viewer/* /usr/share/domoticz/www/templates/
+```
 
 Detailed information: https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
 
@@ -635,21 +633,17 @@ A **Setup → Settings → System → Location** menüpontban add meg a telepít
 
 A DSVT ezeket használja a helyfüggő időjárási adatokhoz és a fűtési/hűtési számításokhoz. Hiányzó vagy pontatlan koordináták esetén a számítások hibásak lehetnek. Normál használat során ne hagyatkozz a program tartalék koordinátáira.
 
-<!-- A képernyőkép helye: docs/images/domoticz-location.png. Feltöltés után töröld a kommentjelölőket:
 ![Földrajzi koordináták beállítása a Domoticzban](docs/images/domoticz-location.png)
--->
 
 #### 2. Helyi Domoticz API-hozzáférés engedélyezése
 
-A **Setup → Settings → Security → Local Networks (no username/password)** mezőbe vedd fel ezt a címet:
+A **Setup → Settings → Security → Trusted Networks (no username/password)** mezőbe vedd fel ezt a címet:
 
 `127.0.0.1`
 
 A DSVT a helyi Domoticz API-n keresztül hozza létre és frissíti többek között a felhasználói változókat. A fenti engedély nélkül a kérések **HTTP 401 Unauthorized** hibával elutasításra kerülhetnek, így a rendszer bizonyos funkciói nem működnek. Csak a szükséges helyi címet engedélyezd, más hálózatoknál ne kapcsold ki a hitelesítést.
 
-<!-- A képernyőkép helye: docs/images/domoticz-local-networks.png. Feltöltés után töröld a kommentjelölőket:
 ![A helyi API-hozzáférés engedélyezése a Domoticzban](docs/images/domoticz-local-networks.png)
--->
 
 Mindkét beállítást mentsd el, mielőtt először elindítod a DSVT-t.
 
@@ -678,26 +672,32 @@ A telepítés után újra kell indítani a Domoticz szolgáltatást.
 
 OpenWrt alatt:
 
+```sh
 /etc/init.d/domoticz restart
+```
 
 
 ## Frissítés
 
 A plugin frissítéséhez:
 
-
+```sh
 cd /etc/domoticz/plugins/DSVT_HMV_ZONE_12
 git pull
+```
 
 
 A `viewer` könyvtár tartalmát frissítés után is újra át kell másolni, mert az adminisztrációs felület fájljai is változhatnak:
 
+```sh
 cp -r viewer/* /usr/share/domoticz/www/templates/
+```
 
 Ezután újra kell indítani a Domoticz szolgáltatást:
 
-
+```sh
 /etc/init.d/domoticz restart
+```
 
 
 ## Beállítás és konfiguráció
