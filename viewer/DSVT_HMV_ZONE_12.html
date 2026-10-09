@@ -1213,18 +1213,6 @@
 			presence_detection_value.classList.add('input-normal');
 			cell10.appendChild(presence_detection_value);
 
-			var login_mail = document.createElement('h4');
-			login_mail.innerText = translationLoader.t("Login name (email)")+':';
-			login_mail.setAttribute('style', 'font-weight:bold;');
-			cell11.appendChild(login_mail);
-
-			var login_mail_value = document.createElement('input');
-			login_mail_value.setAttribute('type', 'text');
-			login_mail_value.setAttribute('id', 'text_5_mode6_' + i);
-			login_mail_value.setAttribute('value', mode6Array[5]);
-			login_mail_value.classList.add('input-normal');
-			cell12.appendChild(login_mail_value);
-
 			for (let z = 1; z <= 12; z++) {
 				const zoneBlock = document.createElement('div');
 				zoneBlock.classList.add('device-block', 'zone-block');
