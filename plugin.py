@@ -7225,15 +7225,14 @@ class BasePlugin:
 	def find_now_dewpoint(self):
 
 		if not self.met_data_string:
-			Domoticz.Error("Nem volt self.met_data_string, betöltés LatLonNapTempAPI()-val")
-			self.met_data_string = self.LatLonNapTempAPI()
+			Domoticz.Error("Nem volt self.met_data_string, betöltés WeatherForecastAPI()-val")
+			self.met_data_string = self.WeatherForecastAPI()
 
 		current_hour = time.strftime("%Y-%m-%d %H", time.localtime())
 
 		def extract_current_dew(data):
 			for entry in data or []:
 				try:
-					Domoticz.Error("DEBUG dewpoint entry: " + str(entry))
 					if (entry.get('time') or '')[:13] == current_hour:
 						return entry.get('dewpoint')
 				except Exception as e:
@@ -7243,8 +7242,8 @@ class BasePlugin:
 		dew = extract_current_dew(self.met_data_string)
 
 		if dew is None:
-			Domoticz.Debug("Nincs aktuális órára dewpoint, újratöltés LatLonNapTempAPI()-val")
-			self.met_data_string = self.LatLonNapTempAPI()
+			Domoticz.Debug("Nincs aktuális órára dewpoint, újratöltés WeatherForecastAPI()-val")
+			self.met_data_string = self.WeatherForecastAPI()
 			dew = extract_current_dew(self.met_data_string)
 
 		if dew is not None:
@@ -8926,10 +8925,10 @@ class BasePlugin:
 		if not self.met_data_string :
 			Domoticz.Error("Nem volt self.met_data_string")
 
-			self.met_data_string = self.LatLonNapTempAPI()
+			self.met_data_string = self.WeatherForecastAPI()
 
 			if self.met_data_string is None:
-				Domoticz.Error("Nem sikerült adatot lekérni a LatLonNapTempAPI segítségével.")
+				Domoticz.Error("Nem sikerült adatot lekérni a WeatherForecastAPI segítségével.")
 			else:
 				Domoticz.Debug("Sikeres adatlekérés: {}".format(self.met_data_string))
 
@@ -9049,7 +9048,7 @@ class BasePlugin:
 
 				if max_date < current_timenergieatermelesfuggo_futes_ido :
 					self.met_data_string = []
-					self.met_data_string = self.LatLonNapTempAPI()
+					self.met_data_string = self.WeatherForecastAPI()
 					Domoticz.Debug("if self.ido self.met_data_string ="+format(self.met_data_string))
 					Devices[3].Update(nValue=0, sValue=str(Devices[3].sValue))
 					Devices[4].Update(nValue=0, sValue=str(Devices[4].sValue))
@@ -9063,7 +9062,7 @@ class BasePlugin:
 			else:
 				Domoticz.Debug("frissiteni kell regi az ido adat")
 				self.met_data_string = []
-				self.met_data_string = self.LatLonNapTempAPI()
+				self.met_data_string = self.WeatherForecastAPI()
 				Domoticz.Debug("if max_date self.met_data_string ="+format(self.met_data_string))
 
 			if self.dhw_external_time_limit and self.met_data_string :
@@ -12377,9 +12376,9 @@ class BasePlugin:
 
 
 
-	def LatLonNapTempAPI(self):
+	def WeatherForecastAPI(self):
 
-		LatLonNapTemp = None
+		WeatherForecast = None
 		url = "None"
 
 		try:
@@ -12387,29 +12386,35 @@ class BasePlugin:
 				"https://api.open-meteo.com/v1/forecast"
 				f"?latitude={self.location[0]}"
 				f"&longitude={self.location[1]}"
-				"&hourly=temperature_2m,relative_humidity_2m"
+				"&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,rain,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m,shortwave_radiation,cloud_cover,pressure_msl"
 				"&timezone=auto"
 				"&forecast_days=1"
 			)
 
-			Domoticz.Debug(f"Hívás LatLonNapTempAPI Open-Meteo: {url}")
+			Domoticz.Debug(f"Hívás WeatherForecastAPI Open-Meteo: {url}")
 
 			req = request.Request(url)
 			response = request.urlopen(req, timeout=10)
 
 			if response.status == 200:
 
-				raw_data = json.loads(
-					response.read().decode("utf-8")
-				)
-
+				raw_data = json.loads(response.read().decode("utf-8"))
 				hourly = raw_data.get("hourly", {})
 
 				times = hourly.get("time", [])
 				temperatures = hourly.get("temperature_2m", [])
 				humidities = hourly.get("relative_humidity_2m", [])
+				dewpoints = hourly.get("dew_point_2m", [])
+				rains = hourly.get("rain", [])
+				precipitations = hourly.get("precipitation", [])
+				winds = hourly.get("wind_speed_10m", [])
+				windgusts = hourly.get("wind_gusts_10m", [])
+				winddirections = hourly.get("wind_direction_10m", [])
+				radiations = hourly.get("shortwave_radiation", [])
+				cloudcovers = hourly.get("cloud_cover", [])
+				pressures = hourly.get("pressure_msl", [])
 
-				LatLonNapTemp = []
+				WeatherForecast = []
 
 				for i in range(len(times)):
 
@@ -12420,50 +12425,31 @@ class BasePlugin:
 
 					temp = temperatures[i] if i < len(temperatures) else None
 					humidity = humidities[i] if i < len(humidities) else None
+					dewpoint = dewpoints[i] if i < len(dewpoints) else None
+					rain = rains[i] if i < len(rains) else None
+					precipitation = precipitations[i] if i < len(precipitations) else None
+					wind = winds[i] if i < len(winds) else None
+					windgust = windgusts[i] if i < len(windgusts) else None
+					winddirection = winddirections[i] if i < len(winddirections) else None
+					radiation = radiations[i] if i < len(radiations) else None
+					cloudcover = cloudcovers[i] if i < len(cloudcovers) else None
+					pressure = pressures[i] if i < len(pressures) else None
 
-					dewpoint = None
+					lux = round(radiation * 120) if radiation is not None else None
 
-					if temp is not None and humidity is not None:
-						try:
-							a = 17.62
-							b = 243.12
+					WeatherForecast.append({"time": datum, "temp": str(temp) if temp is not None else None, "humidity": str(humidity) if humidity is not None else None, "dewpoint": str(dewpoint) if dewpoint is not None else None, "rain": str(rain) if rain is not None else None, "precipitation": str(precipitation) if precipitation is not None else None, "wind": str(wind) if wind is not None else None, "windgust": str(windgust) if windgust is not None else None, "winddirection": str(winddirection) if winddirection is not None else None, "radiation": str(radiation) if radiation is not None else None, "lux": str(lux) if lux is not None else None, "cloudcover": str(cloudcover) if cloudcover is not None else None, "pressure": str(pressure) if pressure is not None else None})
 
-							gamma = (
-								math.log(humidity / 100.0)
-								+ ((a * temp) / (b + temp))
-							)
-
-							dewpoint = (b * gamma) / (a - gamma)
-
-						except Exception as e:
-							Domoticz.Error(
-								f"Open-Meteo dewpoint számítási hiba: {e}"
-							)
-
-					LatLonNapTemp.append({
-						"time": datum,
-						"temp": str(temp) if temp is not None else None,
-						"humidity": str(humidity) if humidity is not None else None,
-						"dewpoint": str(round(dewpoint, 1)) if dewpoint is not None else None
-					})
-
-				Domoticz.Debug(
-					f"Open-Meteo átalakítva: {len(LatLonNapTemp)} rekord"
-				)
+				Domoticz.Debug(f"Open-Meteo átalakítva: {len(WeatherForecast)} rekord")
 
 			else:
-				Domoticz.Error(
-					f"LatLonNapTempAPI Open-Meteo: HTTP hiba = {response.status}"
-				)
+				Domoticz.Error(f"WeatherForecastAPI Open-Meteo: HTTP hiba = {response.status}")
 
 			response.close()
 
 		except Exception as e:
-			Domoticz.Error(
-				f"Hiba történt a következő API hívásakor: '{url}'. Hiba: {str(e)}"
-			)
+			Domoticz.Error(f"Hiba történt a következő API hívásakor: '{url}'. Hiba: {str(e)}")
 
-		return LatLonNapTemp
+		return WeatherForecast
 
 global _plugin
 _plugin = BasePlugin()
