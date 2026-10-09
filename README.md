@@ -325,6 +325,21 @@ git clone https://github.com/szelessavalapitvany/Domoticz-DSVT.git DSVT_HMV_ZONE
 cp -r /etc/domoticz/plugins/DSVT_HMV_ZONE_12/viewer/* /usr/share/domoticz/www/templates/
 ```
 
+
+### Configure DSVT using the Custom HTML interface
+
+**Important: First create the DSVT hardware entry in Domoticz with an empty configuration.** Go to **Setup → Hardware**, select **DSVT + HMV (DHW) + 12 ZONE**, enter a name, keep the required Domoticz connection settings (IP address and port) correct, leave the heating/cooling device lists and other optional configuration fields empty, then click **Add**. Do not attempt the detailed setup in this standard hardware form: it is only used to create and start the plugin.
+
+**The DSVT HTML setup becomes available only after the plugin has been added.** Once the hardware entry exists, perform the full heating, cooling, DHW and zone configuration through the dedicated HTML interface under **Custom**.
+
+![Standard Domoticz hardware form — not the full DSVT configuration interface](docs/images/dsvt-html-setup-1.png)
+
+Open **Custom → HTML setup!** to access the DSVT configuration interface.
+
+![DSVT dedicated HTML configuration interface under Custom](docs/images/dsvt-html-setup-2.png)
+
+**Check user permissions:** The account used to configure DSVT must be allowed to view the **Custom** menu. This access is not enabled by default for every user. If **Custom** is missing, have a Domoticz administrator grant the account the necessary permissions before continuing.
+
 Detailed information: https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
 
 
@@ -676,6 +691,21 @@ OpenWrt alatt:
 /etc/init.d/domoticz restart
 ```
 
+
+
+### A DSVT beállítása a Custom menü HTML-felületén
+
+**Fontos: először a DSVT plugint üres konfigurációval létre kell hozni a Domoticzban!** A **Setup → Hardware** oldalon válaszd ki a **DSVT + HMV (DHW) + 12 ZONE** típust, adj nevet, ellenőrizd a Domoticz csatlakozási adatokat (IP-cím, port), a fűtési/hűtési eszközlistákat és a többi opcionális konfigurációs mezőt hagyd üresen, majd kattints az **Add** gombra. A részletes beállításokat ne ezen a hagyományos hardverűrlapon próbáld elvégezni: itt csak létrehozzuk és elindítjuk a plugint.
+
+**A DSVT HTML setup felülete csak a plugin létrehozása után válik elérhetővé.** Ezután a fűtés, hűtés, HMV és a zónák részletes konfigurációját a **Custom** menüben kell elvégezni.
+
+![A Domoticz alap hardverbeállítási oldala — nem a teljes DSVT-konfiguráció](docs/images/dsvt-html-setup-1.png)
+
+A részletes konfigurációhoz nyisd meg a **Custom → HTML setup!** menüpontot.
+
+![A DSVT saját HTML-konfigurációs felülete a Custom menüben](docs/images/dsvt-html-setup-2.png)
+
+**Ellenőrizd a jogosultságokat!** A DSVT-t konfiguráló felhasználónak rendelkeznie kell a **Custom** menü megtekintéséhez szükséges jogosultsággal. Ez alapértelmezés szerint nem minden felhasználó számára engedélyezett. Ha a **Custom** menü nem jelenik meg, a Domoticz rendszergazdájával engedélyeztetni kell a megfelelő hozzáférést.
 
 ## Frissítés
 
