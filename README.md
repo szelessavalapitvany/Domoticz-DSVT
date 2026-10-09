@@ -293,6 +293,34 @@ Testing on other Linux-based Domoticz systems is welcome.
 
 ## Installation
 
+## Required Domoticz settings before first startup
+
+Before starting DSVT for the first time, configure the following two settings in Domoticz. Both are necessary for correct operation.
+
+### 1. Set your actual geographic location
+
+Go to **Setup → Settings → System → Location** and enter the real latitude and longitude of the installation site.
+
+DSVT uses these coordinates for location-dependent weather information and heating/cooling calculations. Missing or incorrect coordinates may produce inaccurate results. Do not rely on the plugin's fallback location for normal operation.
+
+<!-- Add a screenshot to docs/images/domoticz-location.png, then remove these comment markers:
+![Domoticz geographic location settings](docs/images/domoticz-location.png)
+-->
+
+### 2. Allow local Domoticz API access
+
+Go to **Setup → Settings → Security → Local Networks (no username/password)** and add:
+
+`127.0.0.1`
+
+DSVT calls the local Domoticz API to create and update user variables and perform other operations. Without this exception, these requests may return **HTTP 401 Unauthorized**, preventing parts of DSVT from working. Allow only the required loopback address; do not disable authentication for other networks.
+
+<!-- Add a screenshot to docs/images/domoticz-local-networks.png, then remove these comment markers:
+![Domoticz local networks API access setting](docs/images/domoticz-local-networks.png)
+-->
+
+Save both settings before the first DSVT startup.
+
 Clone the repository into the Domoticz plugin directory:
 
 cd /etc/domoticz/plugins
@@ -596,6 +624,34 @@ A rendszer eddig elsősorban OpenWrt környezetben lett tesztelve és használva
 Más Linux-alapú Domoticz rendszereken végzett tesztelést szívesen fogadunk.
 
 ## Telepítés
+
+### Kötelező Domoticz-beállítások az első indítás előtt
+
+A DSVT első indítása előtt a Domoticzban az alábbi két beállítást el kell végezni. Mindkettő szükséges a megfelelő működéshez.
+
+#### 1. Valós földrajzi koordináták megadása
+
+A **Setup → Settings → System → Location** menüpontban add meg a telepítés helyének valós földrajzi szélességét és hosszúságát.
+
+A DSVT ezeket használja a helyfüggő időjárási adatokhoz és a fűtési/hűtési számításokhoz. Hiányzó vagy pontatlan koordináták esetén a számítások hibásak lehetnek. Normál használat során ne hagyatkozz a program tartalék koordinátáira.
+
+<!-- A képernyőkép helye: docs/images/domoticz-location.png. Feltöltés után töröld a kommentjelölőket:
+![Földrajzi koordináták beállítása a Domoticzban](docs/images/domoticz-location.png)
+-->
+
+#### 2. Helyi Domoticz API-hozzáférés engedélyezése
+
+A **Setup → Settings → Security → Local Networks (no username/password)** mezőbe vedd fel ezt a címet:
+
+`127.0.0.1`
+
+A DSVT a helyi Domoticz API-n keresztül hozza létre és frissíti többek között a felhasználói változókat. A fenti engedély nélkül a kérések **HTTP 401 Unauthorized** hibával elutasításra kerülhetnek, így a rendszer bizonyos funkciói nem működnek. Csak a szükséges helyi címet engedélyezd, más hálózatoknál ne kapcsold ki a hitelesítést.
+
+<!-- A képernyőkép helye: docs/images/domoticz-local-networks.png. Feltöltés után töröld a kommentjelölőket:
+![A helyi API-hozzáférés engedélyezése a Domoticzban](docs/images/domoticz-local-networks.png)
+-->
+
+Mindkét beállítást mentsd el, mielőtt először elindítod a DSVT-t.
 
 A repository-t a Domoticz plugin könyvtárába kell klónozni:
 
