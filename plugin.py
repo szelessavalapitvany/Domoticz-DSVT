@@ -1037,7 +1037,7 @@ class BasePlugin:
 					   "LevelOffHidden": "true",
 					   "SelectorStyle": "0"}
 			Domoticz.Device(Name= tl.t("Heating - Cooling mode"), Unit=2, TypeName="Selector Switch", Switchtype=18, Image=15, Options=Options, Used=1).Create()
-			devicecreated.append(deviceparam(2, 0, "10"))
+			devicecreated.append(deviceparam(2, 1, "10"))
 			self.addfavorite(Devices[2].ID)
 		if 112 not in Devices:
 			Options = {"LevelActions": "||",
