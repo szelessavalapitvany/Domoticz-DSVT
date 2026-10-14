@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "Ved tilstedeværelse"
+    "In case of presence": "Ved tilstedeværelse",
+    "Log panel initialized": "Loggpanelet er initialisert",
+    "Save process started": "Lagring startet",
+    "Updatehardware request sent": "Updatehardware-forespørsel sendt",
+    "Updatehardware request failed": "Updatehardware-forespørsel mislyktes",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) Forsøk {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) Forespørsel sendt",
+    "({idx}) HTTP error: {status}": "({idx}) HTTP-feil: {status}",
+    "({idx}) Network error": "({idx}) Nettverksfeil",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) Maksimalt antall forsøk nådd, oppdateringen hoppes over",
+    "({idx}) Request timed out": "({idx}) Forespørselen fikk tidsavbrudd",
+    "({idx}) Exception: {error}": "({idx}) Unntak: {error}",
+    "All setpoints updated": "Alle måltemperaturer er oppdatert",
+    "Update complete, reloading page...": "Oppdatering fullført, siden lastes inn på nytt..."
 }

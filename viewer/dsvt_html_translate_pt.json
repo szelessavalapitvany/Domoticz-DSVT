@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "Em caso de presença"
+    "In case of presence": "Em caso de presença",
+    "Log panel initialized": "Painel de registo inicializado",
+    "Save process started": "Processo de gravação iniciado",
+    "Updatehardware request sent": "Pedido updatehardware enviado",
+    "Updatehardware request failed": "Falha no pedido updatehardware",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) Tentativa {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) Pedido enviado com sucesso",
+    "({idx}) HTTP error: {status}": "({idx}) Erro HTTP: {status}",
+    "({idx}) Network error": "({idx}) Erro de rede",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) Número máximo de tentativas atingido, atualização ignorada",
+    "({idx}) Request timed out": "({idx}) O pedido excedeu o tempo limite",
+    "({idx}) Exception: {error}": "({idx}) Exceção: {error}",
+    "All setpoints updated": "Todas as temperaturas definidas foram atualizadas",
+    "Update complete, reloading page...": "Atualização concluída, a recarregar a página..."
 }

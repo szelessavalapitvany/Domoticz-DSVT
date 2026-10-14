@@ -5,22 +5,22 @@
 			constructor() {
 				this.translations = {};
 
-				//	Promise, amit minden más kód megvárhat
+				//	Promise that other code can await | Promise, amelynek teljesülését a többi kód megvárhatja
 				this.loaded = this.loadTranslations().then(t => {
 					this.translations = t || {};
 					if (!$.isEmptyObject(this.translations)) {
 						this.translatePage();
 					} else {
-						console.error("Hiba: üres vagy hiányos fordítási fájl!");
+						console.error("Translation file is empty or incomplete! | A fordítási fájl üres vagy hiányos!");
 					}
 				});
 			}
 
 			async loadTranslations() {
 
-				//	Ellenőrzés, hogy a szükséges változók léteznek-e
+				//	Check whether the required variables exist | A szükséges változók létezésének ellenőrzése
 				if (typeof proto === 'undefined' || typeof address === 'undefined' || typeof port === 'undefined') {
-					console.error("Hiányzik a 'proto', 'address' vagy 'port' változó.");
+					console.error("Missing the 'proto', 'address' or 'port' variable. | Hiányzik a 'proto', 'address' vagy 'port' változó.");
 					return {};
 				}
 
@@ -30,11 +30,11 @@
 
 				try {
 					const response = await fetch(settingsUrl);
-					if (!response.ok) throw new Error('Hálózati hiba történt');
+					if (!response.ok) throw new Error('Network error occurred | Hálózati hiba történt');
 					const data = await response.json();
 					aktlanguage = data.Language;
 				} catch (error) {
-					console.error('Hiba a beállítások lekérése közben:', error);
+					console.error('Error while retrieving settings | Hiba a beállítások lekérése közben:', error);
 					return {};
 				}
 
@@ -44,7 +44,7 @@
 					const response = await $.getJSON(filePath);
 					return response;
 				} catch (error) {
-					console.error(`Hiba történt a '${filePath}' fájl betöltése közben: ${error}`);
+					console.error(`Error loading file '${filePath}': ${error} | Hiba történt a '${filePath}' fájl betöltése közben: ${error}`);
 					return {};
 				}
 			}
@@ -59,7 +59,7 @@
 					const translation = this.t(key);
 					$(element).text(translation);
 				});
-				console.log("Oldal sikeresen lefordítva.");
+				console.log("Page translation completed successfully. | Az oldal fordítása sikeresen befejeződött.");
 			}
 		}
 
@@ -69,9 +69,7 @@
 </script>
 
 	<div id="saveStatus" aria-hidden="true">
-			<div id="logOutput" aria-hidden="true">
-				Log panel indítva...
-			</div>
+			<div id="logOutput" aria-hidden="true"><div data-translate="Log panel initialized">Log panel initialized</div></div>
 			<svg viewBox="0 0 50 50" class="spin-icon" xmlns="http://www.w3.org/2000/svg">
 				<circle cx="25" cy="25" r="20" fill="none" stroke="#eee" stroke-width="5" stroke-linecap="round" stroke-dasharray="90" stroke-dashoffset="60"/>
 			</svg>
@@ -277,22 +275,27 @@
 	}
 	function showSaveStatus() {
 		document.getElementById("saveStatus").style.display = "block";
-		console.log('showSaveStatus');
+		console.log('Showing save status | Mentési állapot megjelenítése');
 	}
 	function showLogStatus() {
 		document.getElementById("logOutput").style.display = "block";
-		console.log('showLogStatus');
+		console.log('Showing log panel | Naplópanel megjelenítése');
 	}
-	function logToScreen(msg) {
+	function logToScreen(key, values = {}) {
 		const logBox = document.getElementById("logOutput");
 		if (!logBox) return;
-		const timestamp = new Date().toLocaleTimeString();
-		logBox.innerHTML += `[${timestamp}] ${msg}<br>`;
-		logBox.scrollTop = logBox.scrollHeight; // automatikus scroll
+		const template = window.translationLoader.t(key);
+		const message = template.replace(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g, (match, name) =>
+			Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : match
+		);
+		const line = document.createElement("div");
+		line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+		logBox.appendChild(line);
+		logBox.scrollTop = logBox.scrollHeight; // Scroll automatically to the latest log entry | Automatikus görgetés a legújabb naplóbejegyzéshez
 	}
 	function hideSaveStatus() {
 		document.getElementById("saveStatus").style.display = "none";
-		console.log('hideSaveStatus');
+		console.log('Hiding save status | Mentési állapot elrejtése');
 	}
 
 	Promise.resolve(window.translationLoader.loaded).then(() => {
@@ -475,11 +478,11 @@
 				});
 			}
 
-			// --- Zónahőmérsékletek ---
+			// Zone temperatures | Zónahőmérsékletek
 			for (const [key, value] of Object.entries(data)) {
 				if (key.startsWith("zonetemp_") && Array.isArray(value) && value.length > 0) {
 					const zName = key.replace("zonetemp_", "").replace(/_/g, " ");
-					//console.log("Zónahőmérséklet adatsor:", zName, value.length);
+					//console.log("Zone temperature data series | Zónahőmérséklet adatsor:", zName, value.length);
 
 					series.push({
 						name:  zName,
@@ -726,7 +729,7 @@
 					})
 				});
 			}
-			//console.log(series);
+			//console.log(series); // Log chart series for debugging | Diagram-adatsorok naplózása hibakereséshez
 			chartElement.highcharts({
 				chart: {
 					zoomType: 'x'
@@ -809,7 +812,7 @@
 			redname.innerText = dsvt[i].name;
 			cell1.appendChild(redname);
 
-			// Graf
+			// Chart | Grafikon
 
 			element = document.createElement('h3');
 			element.innerText = translationLoader.t('Thermostat');;
@@ -829,11 +832,11 @@
 
 			showUsageChart(dsvt[i], i);
 
-			// eszkozok-zonak
+			// Devices and zones | Eszközök és zónák
 			
 			const contentContainer = document.getElementById('dsvt_hmv_zone_12_content');
 
-			// Kontenerek
+			// Containers | Konténerek
 			const device3Block = document.createElement('div');
 			device3Block.id = 'device3Block_' + i;
 			contentContainer.appendChild(device3Block);
@@ -1053,7 +1056,7 @@
 
 			const dropBlockConfigs = [];
 
-			// Ezkoz 1
+			// Device 1 | 1. eszköz
 			[
 				{ title: "1. device heating", link: "➕ Add heating switch", modePrefix: 'F', targetId: 'heating_switch_1', datasetKey: 'f1', inputName: 'heating_switch_id_1' },
 				{ title: "1. device cooling", link: "➕ Add cooling switch", modePrefix: 'H', targetId: 'colling_switch_1', datasetKey: 'h1', inputName: 'colling_switch_id_1' },
@@ -1072,7 +1075,7 @@
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), device1Block);
 			});
 
-			// Eszkoz 2
+			// Device 2 | 2. eszköz
 			[
 				{ title: "2. device heating", link: "➕ Add heating switch", modePrefix: 'F', targetId: 'heating_switch_2', datasetKey: 'f2', inputName: 'heating_switch_id_2' },
 				{ title: "2. device cooling", link: "➕ Add cooling switch", modePrefix: 'H', targetId: 'colling_switch_2', datasetKey: 'h2', inputName: 'colling_switch_id_2' },
@@ -1090,7 +1093,7 @@
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), device2Block);
 			});
 
-			// Kulso homero, Keveroszelep, szoba, hmv, puffer homero
+			// Outdoor, mixing valve, room, DHW and buffer temperature sensors | Külső, keverőszelep-, szoba-, HMV- és pufferhőmérők
 			[
 				{ title: "Outdoor thermometer|s|", link: "➕ Add thermometer", modePrefix: 'K', targetId: 'out_temp', datasetKey: 'k', inputName: 'out_temp_id', forparam: 'tempnameakt' },
 				{ title: "DHW tank thermometer|s|", link: "➕ Add thermometer", modePrefix: 'T', targetId: 'hmv_temp', datasetKey: 't', inputName: 'hmv_temp_id', forparam: 'tempnameakt' },
@@ -1104,7 +1107,7 @@
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
 			});
 
-			// Keveroszelep
+			// Mixing valve: increase control | Keverőszelep: növelő vezérlés
 			[
 				{ title: "1. mixing valve plus", link: "➕ Add plus switch", modePrefix: 'S_1', targetId: 'valve_1_pluss', datasetKey: 's_1', inputName: 'valve_1_pluss_id', forparam: 'switchnameakt' },
 				{ title: "2. mixing valve plus", link: "➕ Add plus switch", modePrefix: 'S_2', targetId: 'valve_2_pluss', datasetKey: 's_2', inputName: 'valve_2_pluss_id', forparam: 'switchnameakt' },
@@ -1113,7 +1116,7 @@
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
 			});
 
-			// Keveroszelep
+			// Mixing valve: decrease control | Keverőszelep: csökkentő vezérlés
 			[
 				{ title: "1. mixing valve minus", link: "➕ Add minus switch", modePrefix: 'S_1', targetId: 'valve_1_minus', datasetKey: 's_1', inputName: 'valve_1_minus_id', forparam: 'switchnameakt' },
 				{ title: "2. mixing valve minus", link: "➕ Add minus switch", modePrefix: 'S_2', targetId: 'valve_2_minus', datasetKey: 's_2', inputName: 'valve_2_minus_id', forparam: 'switchnameakt' },
@@ -1122,7 +1125,7 @@
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
 			});
 
-			// Mode6
+			// Mode 6 settings | Mode6 beállítások
 
 			var mode6Array = dsvt[i].Mode6.split(',');
 
@@ -1294,22 +1297,22 @@
 				});
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
 
-				// AC heating setup ----------------------------------------------
+				// Air-conditioning heating settings | Klímás fűtés beállításai
 
 				const klimaWrapperF = document.createElement('div');
 				klimaWrapperF.classList.add('klimaWrapper');
 
-				// --- Cím ---
+				// Title | Cím
 				const klimaTitle = document.createElement('div');
 				klimaTitle.innerText = translationLoader.t("Heating Air Conditioner Settings Tasmota IR");
 				klimaTitle.classList.add('paramname');
 				klimaWrapperF.appendChild(klimaTitle);
 
-				// --- Tartalom külön div-ben ---
+				// Content in a separate div | Tartalom külön div elemben
 				const klimaContentF = document.createElement('div');
 				klimaContentF.classList.add('klimaContent');
 
-				// --- Gyártó ---
+				// Manufacturer | Gyártó
 				const labelVendor = document.createElement('label');
 				labelVendor.innerText = translationLoader.t("Vendor") + ':';
 				labelVendor.setAttribute('for', `Fvendor_${i}_${z}`);
@@ -1334,7 +1337,7 @@
 				selectVendor.value = vendorValue;
 				klimaContentF.appendChild(selectVendor);
 
-				// --- Tasmota IP ---
+				// Tasmota IP address | Tasmota IP-cím
 				const labelIP = document.createElement('label');
 				labelIP.innerText = translationLoader.t("Tasmota IP address") + ': ';
 				labelIP.setAttribute('for', `Fip_${i}_${z}`);
@@ -1350,7 +1353,7 @@
 				inputIP.classList.add('input-normal');
 				klimaContentF.appendChild(inputIP);
 
-				// --- Ventilátor ---
+				// Fan | Ventilátor
 				const labelFan = document.createElement('label');
 				labelFan.innerText = translationLoader.t("Fan speed") + ':';
 				labelFan.setAttribute('for', `Ffanspeed_${i}_${z}`);
@@ -1384,7 +1387,7 @@
 				selectFan.value = fanValue;
 				klimaContentF.appendChild(selectFan);
 
-				// --- SwingV ---
+				// Vertical swing | Függőleges légterelés
 				const labelSwingV = document.createElement('label');
 				labelSwingV.innerText = translationLoader.t("Vertical swing") + ':';
 				labelSwingV.setAttribute('for', `Fswingv_${i}_${z}`);
@@ -1415,7 +1418,7 @@
 				selectSwingV.value = swingvValue;
 				klimaContentF.appendChild(selectSwingV);
 
-				// --- SwingH ---
+				// Horizontal swing | Vízszintes légterelés
 				const labelSwingH = document.createElement('label');
 				labelSwingH.innerText = translationLoader.t("Horizontal swing") + ':';
 				labelSwingH.setAttribute('for', `Fswingh_${i}_${z}`);
@@ -1446,14 +1449,14 @@
 				selectSwingH.value = swinghValue;
 				klimaContentF.appendChild(selectSwingH);
 
-				// --- Célkompenzáció + határ lefelé/felfelé (F) -----------------
+				// Target compensation and lower/upper limits (heating) | Célkompenzáció és alsó/felső határok (fűtés)
 
 				const klimaExtraRowF = document.createElement('div');
 				klimaExtraRowF.classList.add('klimaExtraRowF');
 
 				const klimaBaseRowF = dsvt[i].klimatabla.find(r => r.zona == z && r.tipus == "F") || {};
 
-				// ---- Célkompenzáció ----
+				// Target compensation | Célkompenzáció
 				const labelKompF = document.createElement('label');
 				labelKompF.innerText = translationLoader.t("Target compensation") + ':';
 				labelKompF.setAttribute('for', `Fkomp_${i}_${z}`);
@@ -1469,7 +1472,7 @@
 				inputKompF.value = klimaBaseRowF.komp ?? 0;
 				klimaExtraRowF.appendChild(inputKompF);
 
-				// ---- Szabályozási alsó határ ----
+				// Lower control limit | Szabályozási alsó határ
 				const labelLowF = document.createElement('label');
 				labelLowF.innerText = translationLoader.t("Dynamic limit (lower)") + ':';
 				labelLowF.setAttribute('for', `Fhatarlow_${i}_${z}`);
@@ -1486,7 +1489,7 @@
 				inputLowF.value = klimaBaseRowF.hatar_low ?? 0;
 				klimaExtraRowF.appendChild(inputLowF);
 
-				// ---- Szabályozási felső határ ----
+				// Upper control limit | Szabályozási felső határ
 				const labelTopF = document.createElement('label');
 				labelTopF.innerText = translationLoader.t("Dynamic limit (upper)") + ':';
 				labelTopF.setAttribute('for', `Fhatartop_${i}_${z}`);
@@ -1506,7 +1509,7 @@
 				const klimaCheckboxRowF = document.createElement('div');
 				klimaCheckboxRowF.classList.add('klimaCheckboxRowF');
 
-				// ---- Target Off ----
+				// Target Off option | Célhőmérséklet kikapcsolása opció
 				const labelTargetOffF = document.createElement('label');
 				labelTargetOffF.innerText = translationLoader.t("Target Off") + ':';
 				labelTargetOffF.classList.add('label-normal');
@@ -1520,7 +1523,7 @@
 				inputTargetOffF.style.marginLeft = "5px";
 				klimaCheckboxRowF.appendChild(inputTargetOffF);
 
-				// ---- Disabled when present ----
+				// Presence-dependent enable/disable setting | Jelenléttől függő engedélyezési/tiltási beállítás
 
 				const labelPresenceOffF = document.createElement('label');
 				labelPresenceOffF.innerText = translationLoader.t("In case of presence") + ':';
@@ -1540,7 +1543,7 @@
 					selectPresenceOffF.appendChild(option);
 				});
 
-				// aktuális érték
+				// Current value | Aktuális érték
 				selectPresenceOffF.value =
 					klimaBaseRowF.AC_jelenlet === "On" ? "On" :
 					klimaBaseRowF.AC_jelenlet === "Off" ? "Off" :
@@ -1549,11 +1552,11 @@
 				klimaCheckboxRowF.appendChild(selectPresenceOffF);
 
 
-				// --- Hozzáadás a fő tartalomhoz ---
+				// Append to main content | Hozzáadás a fő tartalomhoz
 				klimaContentF.appendChild(klimaExtraRowF);
 				klimaContentF.appendChild(klimaCheckboxRowF);
 
-				// --- Hozzáfűzés a wrapperhez és a zónához ---
+				// Append to wrapper and zone | Hozzáfűzés a burkolóelemhez és a zónához
 				klimaWrapperF.appendChild(klimaContentF);
 				zoneBlock.appendChild(klimaWrapperF);
 
@@ -1570,22 +1573,22 @@
 				});
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), zoneBlock);
 
-				// AC cooling setup ----------------------------------------------
+				// Air-conditioning cooling settings | Klímás hűtés beállításai
 
 				const klimaWrapperH = document.createElement('div');
 				klimaWrapperH.classList.add('klimaWrapper');
 
-				// --- Cím ---
+				// Title | Cím
 				const klimaTitleH = document.createElement('div');
 				klimaTitleH.innerText = translationLoader.t("Cooling air conditioner settings Tasmota IR");
 				klimaTitleH.classList.add('paramname');
 				klimaWrapperH.appendChild(klimaTitleH);
 
-				// --- Tartalom külön divben ---
+				// Content in a separate div | Tartalom külön div elemben
 				const klimaContentH = document.createElement('div');
 				klimaContentH.classList.add('klimaContent');
 
-				// --- Gyártó ---
+				// Manufacturer | Gyártó
 				const labelVendorH = document.createElement('label');
 				labelVendorH.innerText = translationLoader.t("Vendor") + ':';
 				labelVendorH.setAttribute('for', `Hvendor_${i}_${z}`);
@@ -1608,7 +1611,7 @@
 				selectVendorH.value = vendorValueH;
 				klimaContentH.appendChild(selectVendorH);
 
-				// --- Tasmota IP ---
+				// Tasmota IP address | Tasmota IP-cím
 				const labelIPH = document.createElement('label');
 				labelIPH.innerText = translationLoader.t("Tasmota IP address") + ': ';
 				labelIPH.setAttribute('for', `Hip_${i}_${z}`);
@@ -1624,7 +1627,7 @@
 				inputIPH.classList.add('input-normal');
 				klimaContentH.appendChild(inputIPH);
 
-				// --- Ventilátor ---
+				// Fan | Ventilátor
 				const labelFanH = document.createElement('label');
 				labelFanH.innerText = translationLoader.t("Fan speed") + ':';
 				labelFanH.setAttribute('for', `Hfanspeed_${i}_${z}`);
@@ -1657,7 +1660,7 @@
 				selectFanH.value = fanValueH;
 				klimaContentH.appendChild(selectFanH);
 
-				// --- SwingV ---
+				// Vertical swing | Függőleges légterelés
 				const labelSwingVH = document.createElement('label');
 				labelSwingVH.innerText = translationLoader.t("Vertical swing") + ':';
 				labelSwingVH.setAttribute('for', `Hswingv_${i}_${z}`);
@@ -1687,7 +1690,7 @@
 				selectSwingVH.value = swingvValueH;
 				klimaContentH.appendChild(selectSwingVH);
 
-				// --- SwingH ---
+				// Horizontal swing | Vízszintes légterelés
 				const labelSwingHH = document.createElement('label');
 				labelSwingHH.innerText = translationLoader.t("Horizontal swing") + ':';
 				labelSwingHH.setAttribute('for', `Hswingh_${i}_${z}`);
@@ -1719,13 +1722,13 @@
 
 				klimaWrapperH.appendChild(klimaContentH);
 
-				// --- Célkompenzáció + határ lefelé/felfelé (H) -----------------
+				// Target compensation and lower/upper limits (cooling) | Célkompenzáció és alsó/felső határok (hűtés)
 				const klimaExtraRowH = document.createElement('div');
 				klimaExtraRowH.classList.add('klimaExtraRowH');
 
 				const klimaBaseRowH = dsvt[i].klimatabla.find(r => r.zona == z && r.tipus == "H") || {};
 
-				// ---- Célkompenzáció ----
+				// Target compensation | Célkompenzáció
 				const labelKompH = document.createElement('label');
 				labelKompH.innerText = translationLoader.t("Target compensation") + ':';
 				labelKompH.setAttribute('for', `Hkomp_${i}_${z}`);
@@ -1741,7 +1744,7 @@
 				inputKompH.value = klimaBaseRowH.komp ?? 0;
 				klimaExtraRowH.appendChild(inputKompH);
 
-				// ---- Szabályozási alsó határ ----
+				// Lower control limit | Szabályozási alsó határ
 				const labelLowH = document.createElement('label');
 				labelLowH.innerText = translationLoader.t("Dynamic limit (lower)") + ':';
 				labelLowH.setAttribute('for', `Hhatarlow_${i}_${z}`);
@@ -1758,7 +1761,7 @@
 				inputLowH.value = klimaBaseRowH.hatar_low ?? 0;
 				klimaExtraRowH.appendChild(inputLowH);
 
-				// ---- Szabályozási felső határ ----
+				// Upper control limit | Szabályozási felső határ
 				const labelTopH = document.createElement('label');
 				labelTopH.innerText = translationLoader.t("Dynamic limit (upper)") + ':';
 				labelTopH.setAttribute('for', `Hhatartop_${i}_${z}`);
@@ -1778,7 +1781,7 @@
 				const klimaCheckboxRowH = document.createElement('div');
 				klimaCheckboxRowH.classList.add('klimaCheckboxRowH');
 
-				// ---- Target Off (checkbox) ----
+				// Target Off checkbox | Célhőmérséklet kikapcsolása jelölőnégyzet
 				const labelTargetOffH = document.createElement('label');
 				labelTargetOffH.innerText = translationLoader.t("Target Off") + ':';
 				labelTargetOffH.classList.add('label-normal');
@@ -1792,7 +1795,7 @@
 				inputTargetOffH.style.marginLeft = "5px";
 				klimaCheckboxRowH.appendChild(inputTargetOffH);
 
-				// ---- Disabled when present (dropdown) ----
+				// Presence-dependent enable/disable dropdown | Jelenléttől függő engedélyezési/tiltási legördülő lista
 				const labelPresenceOffH = document.createElement('label');
 				labelPresenceOffH.innerText = translationLoader.t("In case of presence") + ':';
 				labelPresenceOffH.style.marginLeft = "20px";
@@ -1811,7 +1814,7 @@
 					selectPresenceOffH.appendChild(option);
 				});
 
-				// aktuális érték beállítása
+				// Set the current value | Aktuális érték beállítása
 				selectPresenceOffH.value =
 					klimaBaseRowH.AC_jelenlet === "On" ? "On" :
 					klimaBaseRowH.AC_jelenlet === "Off" ? "Off" :
@@ -1820,13 +1823,13 @@
 				klimaCheckboxRowH.appendChild(selectPresenceOffH);
 
 
-				// --- Hozzáadás a H tartalomhoz ---
+				// Append to cooling content | Hozzáadás a hűtési tartalomhoz
 				klimaContentH.appendChild(klimaExtraRowH);
 				klimaContentH.appendChild(klimaCheckboxRowH);
 
 				zoneBlock.appendChild(klimaWrapperH);
 
-				// Virtuális hidraulikus váltó
+				// Virtual hydraulic separator | Virtuális hidraulikus váltó
 
 				dropBlockConfigs.push({
 					mode: 'Mode3',
@@ -1859,7 +1862,7 @@
 						row.style.gap = '10px';
 						row.style.marginBottom = '8px';
 
-						// Egyezés keresése Unit (parts[0]) alapján
+						// Find a match by Unit (parts[0]) | Egyezés keresése a Unit (parts[0]) alapján
 						const match = dsvt[i].setpointnameakt.find(entry => {
 							const parts = entry.split(':');
 							return parseInt(parts[0]) === unit;
@@ -1869,11 +1872,11 @@
 						let value = '';
 						if (match) {
 							const parts = match.split(':');
-							name = parts[1];  // név
-							value = parts[3]; // érték
+							name = parts[1];  // name | név
+							value = parts[3]; // value | érték
 						}
 
-						// Név input
+						// Name input | Név beviteli mező
 						const nameInput = document.createElement('input');
 						nameInput.type = 'text';
 						nameInput.value = name;
@@ -1881,7 +1884,7 @@
 						nameInput.id = `setpoint_name_${i}_${z}_${index}`;
 						row.appendChild(nameInput);
 
-						// Érték input (szám)
+						// Value input (number) | Érték beviteli mező (szám)
 						const valueInput = document.createElement('input');
 						valueInput.type = 'number';
 						valueInput.step = '0.1';
@@ -1890,7 +1893,7 @@
 						valueInput.classList.add('setpoint-number');
 						row.appendChild(valueInput);
 
-						// Celsius egység
+						// Celsius unit | Celsius mértékegység
 						const unitSpan = document.createElement('span');
 						unitSpan.innerText = '°C';
 						row.appendChild(unitSpan);
@@ -1904,7 +1907,7 @@
 
 		hideSaveStatus();
 
-		// adatgyujtes ---------------------------------------------------------
+		// Collect data | Adatgyűjtés
 
 		var table = document.createElement('table');
 		table.setAttribute('style', 'border-spacing: 5px; width:100%');
@@ -1991,7 +1994,7 @@
 				const url = `${window.location.protocol}//${window.location.hostname}${port}/json.htm?type=command&param=updatehardware&htype=94&loglevel=7&extra=DSVT_HMV_ZONE_12&idx=${dsvt[i_copy].id}&enabled=true&datatimeout=0&name=${dsvt[i_copy].name}&address=${dsvt[i_copy].host}&port=${dsvt[i_copy].port}&username=${dsvt[i_copy].uname}&password=${dsvt[i_copy].pass}&${mode1QueryString}&${mode2QueryString}&${mode3QueryString}&${mode4QueryString}&${mode5QueryString}&${mode6QueryString}`;
 				
 				showSaveStatus();
-				logToScreen("Elindult");
+				logToScreen("Save process started");
 
 				for (let z = 1; z <= 12; z++) {
 					["F", "H"].forEach(tipus => {
@@ -2028,13 +2031,13 @@
 						const value = JSON.stringify(jsonData);
 						const setvarurl = `${window.location.protocol}//${window.location.hostname}${port}/json.htm?type=command&param=updateuservariable&vname=${encodeURIComponent(varname)}&vtype=2&vvalue=${encodeURIComponent(value)}`;
 
-						//console.log("Küldés:", setvarurl);
+						//console.log("Sending | Küldés:", setvarurl);
 						try {
 							const xhr = new XMLHttpRequest();
-							xhr.open("GET", setvarurl, false); // szinkron
+							xhr.open("GET", setvarurl, false); // Synchronous request | Szinkron kérés
 							xhr.send();
 						} catch (e) {
-							console.error("Hiba a uservariable mentésnél:", e);
+							console.error("Error saving user variable | Hiba a felhasználói változó mentése közben:", e);
 						}
 					});
 				}
@@ -2042,17 +2045,17 @@
 
 
 				function sendRequest(url) {
-					console.log("sendRequest elindult:", url);
+					console.log("sendRequest started | A sendRequest elindult:", url);
 					try {
 						const xhr = new XMLHttpRequest();
 						xhr.open("GET", url, true);
 						xhr.send();
 						showLogStatus();
-						console.log("Updatehardware elkuldve.");
-						logToScreen("Updatehardware elkuldve.");
+						console.log("Updatehardware request sent | Az updatehardware kérés elküldve.");
+						logToScreen("Updatehardware request sent");
 					} catch (e) {
-						console.error("Hiba a sendRequest-ben:", e);
-						logToScreen("Updatehardware elkuldve.");
+						console.error("Error in sendRequest | Hiba a sendRequest függvényben:", e);
+						logToScreen("Updatehardware request failed");
 					}
 				}
 
@@ -2070,57 +2073,79 @@
 
 					function trySend() {
 						attempt++;
-						logToScreen(`(${idx_copy}) Próbálkozás ${attempt}/${maxRetries}: ${update.name} → ${update.value}°C`);
+						logToScreen("({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C", {idx: idx_copy, attempt, maxRetries, name: update.name, value: update.value});
 
-						const setpointurl = `${window.location.protocol}//${dsvt[i_copy].uname}:${dsvt[i_copy].pass}@${window.location.hostname}${port}/json.htm?type=setused&idx=${update.idx}&name=${encodeURIComponent(update.name)}&setpoint=${encodeURIComponent(update.value)}&protected=false&used=true`;
+						const setpointurl = `${window.location.origin}/json.htm?type=command&param=setused&idx=${encodeURIComponent(update.idx)}&name=${encodeURIComponent(update.name)}&setpoint=${encodeURIComponent(update.value)}&protected=false&used=true`;
 
 						const xhr = new XMLHttpRequest();
-						let completed = false;
+						let settled = false;
+						let timeoutId = null;
 
-						xhr.open("GET", setpointurl, true);
+						// Finalize an attempt only once, regardless of which event arrives first | Egy próbálkozást csak egyszer zárunk le, függetlenül az események sorrendjétől
+						function settle(success) {
+							if (settled) return;
+							settled = true;
+							if (timeoutId !== null) clearTimeout(timeoutId);
+							xhr.onreadystatechange = null;
+							xhr.onerror = null;
 
-						xhr.onreadystatechange = function () {
-							if (xhr.readyState === 4) {
-								completed = true;
-								if (xhr.status === 200) {
-									logToScreen(`(${idx_copy}) Sikeres küldés.`);
-									setTimeout(() => {
-										sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
-									}, 1000);
-								} else {
-									logToScreen(`(${idx_copy}) Hiba: ${xhr.status}`);
-									retryOrSkip();
-								}
+							if (success) {
+								logToScreen("({idx}) Request sent successfully", {idx: idx_copy});
+								setTimeout(() => {
+									sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
+								}, 1000);
+							} else {
+								retryOrSkip();
 							}
-						};
-
-						xhr.onerror = function () {
-							logToScreen(`(${idx_copy}) Hálózati hiba`);
-							retryOrSkip();
-						};
+						}
 
 						function retryOrSkip() {
 							if (attempt < maxRetries) {
-								setTimeout(() => trySend(), 5000); // újrapróbálkozás kis késleltetéssel
+								setTimeout(trySend, 5000); // Retry after a short delay | Újrapróbálkozás rövid késleltetéssel
 							} else {
-								logToScreen(`(${idx_copy}) Túl sok hiba, kihagyva.`);
+								logToScreen("({idx}) Maximum retries reached, skipping this update", {idx: idx_copy});
 								setTimeout(() => {
 									sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
 								}, 1000);
 							}
 						}
 
-						try {
-							xhr.send();
-							setTimeout(() => {
-								if (!completed) {
-									logToScreen(`(${idx_copy}) Timeout történt`);
-									retryOrSkip();
+						xhr.onreadystatechange = function () {
+							if (xhr.readyState !== 4 || settled) return;
+							if (xhr.status !== 200) {
+								logToScreen("({idx}) HTTP error: {status}", {idx: idx_copy, status: xhr.status});
+								if (xhr.status === 404) {
+									// Stop the batch on HTTP 404 instead of retrying an invalid endpoint | HTTP 404 esetén leállítjuk a mentési sort, és nem próbálkozunk újra hibás végponttal
+									settled = true;
+									if (timeoutId !== null) clearTimeout(timeoutId);
+									xhr.onreadystatechange = null;
+									xhr.onerror = null;
+									console.error("Setpoint update batch stopped after HTTP 404 | A célhőmérséklet-frissítési sor leállt HTTP 404 után", idx_copy);
+									return;
 								}
+							}
+							settle(xhr.status === 200);
+						};
+
+						xhr.onerror = function () {
+							if (settled) return;
+							logToScreen("({idx}) Network error", {idx: idx_copy});
+							settle(false);
+						};
+
+						try {
+							xhr.open("GET", setpointurl, true);
+							timeoutId = setTimeout(() => {
+								if (settled) return;
+								logToScreen("({idx}) Request timed out", {idx: idx_copy});
+								settle(false);
+								xhr.abort(); // Stop the timed-out request before retrying | Az időtúllépett kérés megszakítása az újrapróbálkozás előtt
 							}, 3000);
+							xhr.send();
 						} catch (e) {
-							logToScreen(`(${idx_copy}) Kivétel: ${e.message}`);
-							retryOrSkip();
+							if (settled) return;
+							logToScreen("({idx}) Exception: {error}", {idx: idx_copy, error: e.message});
+							settle(false);
 						}
 					}
 
@@ -2131,10 +2156,10 @@
 
 				setTimeout(() => {
 					sendSetpointUpdatesSequentiallyWithDelay([...setpointUpdates], () => {
-						console.log("Minden setpoint frissitve...");
-						logToScreen("Minden setpoint frissítve.");
+						console.log("All setpoints updated | Minden célhőmérséklet frissítve");
+						logToScreen("All setpoints updated");
 						setTimeout(() => {
-							logToScreen("Frissítés kész, újratöltés...");
+							logToScreen("Update complete, reloading page...");
 							location.reload();
 						}, 1000);
 					});

@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "Bij aanwezigheid"
+    "In case of presence": "Bij aanwezigheid",
+    "Log panel initialized": "Logpaneel geïnitialiseerd",
+    "Save process started": "Opslaan gestart",
+    "Updatehardware request sent": "Updatehardware-verzoek verzonden",
+    "Updatehardware request failed": "Updatehardware-verzoek mislukt",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) Poging {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) Verzoek succesvol verzonden",
+    "({idx}) HTTP error: {status}": "({idx}) HTTP-fout: {status}",
+    "({idx}) Network error": "({idx}) Netwerkfout",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) Maximumaantal pogingen bereikt, update overgeslagen",
+    "({idx}) Request timed out": "({idx}) Time-out van verzoek",
+    "({idx}) Exception: {error}": "({idx}) Uitzondering: {error}",
+    "All setpoints updated": "Alle ingestelde doeltemperaturen bijgewerkt",
+    "Update complete, reloading page...": "Bijwerken voltooid, pagina wordt opnieuw geladen..."
 }

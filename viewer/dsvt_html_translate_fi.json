@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "Läsnäolon tapauksessa"
+    "In case of presence": "Läsnäolon tapauksessa",
+    "Log panel initialized": "Lokipaneeli alustettu",
+    "Save process started": "Tallennus aloitettu",
+    "Updatehardware request sent": "Updatehardware-pyyntö lähetetty",
+    "Updatehardware request failed": "Updatehardware-pyyntö epäonnistui",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) Yritys {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) Pyyntö lähetetty onnistuneesti",
+    "({idx}) HTTP error: {status}": "({idx}) HTTP-virhe: {status}",
+    "({idx}) Network error": "({idx}) Verkkovirhe",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) Yritysten enimmäismäärä saavutettu, päivitys ohitetaan",
+    "({idx}) Request timed out": "({idx}) Pyynnön aikakatkaisu",
+    "({idx}) Exception: {error}": "({idx}) Poikkeus: {error}",
+    "All setpoints updated": "Kaikki tavoitelämpötilat päivitetty",
+    "Update complete, reloading page...": "Päivitys valmis, sivu ladataan uudelleen..."
 }

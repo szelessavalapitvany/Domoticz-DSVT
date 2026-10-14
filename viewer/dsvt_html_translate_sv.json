@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "Vid närvaro"
+    "In case of presence": "Vid närvaro",
+    "Log panel initialized": "Loggpanelen har initierats",
+    "Save process started": "Sparprocessen har startat",
+    "Updatehardware request sent": "Updatehardware-begäran skickad",
+    "Updatehardware request failed": "Updatehardware-begäran misslyckades",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) Försök {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) Begäran har skickats",
+    "({idx}) HTTP error: {status}": "({idx}) HTTP-fel: {status}",
+    "({idx}) Network error": "({idx}) Nätverksfel",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) Maximalt antal försök uppnått, uppdateringen hoppas över",
+    "({idx}) Request timed out": "({idx}) Tidsgränsen för begäran överskreds",
+    "({idx}) Exception: {error}": "({idx}) Undantag: {error}",
+    "All setpoints updated": "Alla måltemperaturer har uppdaterats",
+    "Update complete, reloading page...": "Uppdateringen är klar, sidan läses in igen..."
 }

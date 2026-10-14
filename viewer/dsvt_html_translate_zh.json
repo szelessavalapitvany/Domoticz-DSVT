@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "有人时"
+    "In case of presence": "有人时",
+    "Log panel initialized": "日志面板已初始化",
+    "Save process started": "保存流程已开始",
+    "Updatehardware request sent": "updatehardware 请求已发送",
+    "Updatehardware request failed": "updatehardware 请求失败",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) 第 {attempt}/{maxRetries} 次尝试：{name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) 请求已成功发送",
+    "({idx}) HTTP error: {status}": "({idx}) HTTP 错误：{status}",
+    "({idx}) Network error": "({idx}) 网络错误",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) 已达到最大重试次数，跳过此次更新",
+    "({idx}) Request timed out": "({idx}) 请求超时",
+    "({idx}) Exception: {error}": "({idx}) 异常：{error}",
+    "All setpoints updated": "所有目标温度已更新",
+    "Update complete, reloading page...": "更新完成，正在重新加载页面..."
 }

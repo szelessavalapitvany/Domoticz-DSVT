@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "Při přítomnosti"
+    "In case of presence": "Při přítomnosti",
+    "Log panel initialized": "Panel protokolu inicializován",
+    "Save process started": "Proces ukládání zahájen",
+    "Updatehardware request sent": "Požadavek updatehardware odeslán",
+    "Updatehardware request failed": "Požadavek updatehardware se nezdařil",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) Pokus {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) Požadavek úspěšně odeslán",
+    "({idx}) HTTP error: {status}": "({idx}) Chyba HTTP: {status}",
+    "({idx}) Network error": "({idx}) Chyba sítě",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) Dosažen maximální počet pokusů, aktualizace přeskočena",
+    "({idx}) Request timed out": "({idx}) Vypršel časový limit požadavku",
+    "({idx}) Exception: {error}": "({idx}) Výjimka: {error}",
+    "All setpoints updated": "Všechny cílové teploty aktualizovány",
+    "Update complete, reloading page...": "Aktualizace dokončena, stránka se znovu načítá..."
 }

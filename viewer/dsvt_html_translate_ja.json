@@ -123,5 +123,18 @@
     "Dynamic limit (upper)": "Dynamic limit (upper)",
     "Dynamic limit (lower)": "Dynamic limit (lower)",
     "Target Off": "Target Off",
-    "In case of presence": "在室時"
+    "In case of presence": "在室時",
+    "Log panel initialized": "ログパネルを初期化しました",
+    "Save process started": "保存処理を開始しました",
+    "Updatehardware request sent": "updatehardwareリクエストを送信しました",
+    "Updatehardware request failed": "updatehardwareリクエストに失敗しました",
+    "({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C": "({idx}) 試行 {attempt}/{maxRetries}: {name} → {value}°C",
+    "({idx}) Request sent successfully": "({idx}) リクエストを送信しました",
+    "({idx}) HTTP error: {status}": "({idx}) HTTPエラー: {status}",
+    "({idx}) Network error": "({idx}) ネットワークエラー",
+    "({idx}) Maximum retries reached, skipping this update": "({idx}) 最大試行回数に達したため、この更新をスキップします",
+    "({idx}) Request timed out": "({idx}) リクエストがタイムアウトしました",
+    "({idx}) Exception: {error}": "({idx}) 例外: {error}",
+    "All setpoints updated": "すべての目標温度を更新しました",
+    "Update complete, reloading page...": "更新が完了しました。ページを再読み込みしています..."
 }
