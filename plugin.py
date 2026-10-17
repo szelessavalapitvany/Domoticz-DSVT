@@ -9540,7 +9540,7 @@ class BasePlugin:
 
 			Domoticz.Debug(f"Summary: operation = {self.operation} | Összegzés: operation = {self.operation}")
 
-			if self.Kevero_1_TempSensor or self.Kevero_1_TempSensor :
+			if self.Kevero_1_TempSensor or self.Kevero_2_TempSensor :
 				
 				if self.kevero_max >= float(Devices[59].sValue):
 					self.Kevero_1_temp_max = float(Devices[59].sValue)
