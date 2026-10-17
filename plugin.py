@@ -914,6 +914,30 @@ class BasePlugin:
 		self.AktualTemp = []
 		self.AktualThermostat = []
 		self.aktual_watt = 0
+		self.zone_1_heating_state = False
+		self.zone_2_heating_state = False
+		self.zone_3_heating_state = False
+		self.zone_4_heating_state = False
+		self.zone_5_heating_state = False
+		self.zone_6_heating_state = False
+		self.zone_7_heating_state = False
+		self.zone_8_heating_state = False
+		self.zone_9_heating_state = False
+		self.zone_10_heating_state = False
+		self.zone_11_heating_state = False
+		self.zone_12_heating_state = False
+		self.zone_1_cooling_state = False
+		self.zone_2_cooling_state = False
+		self.zone_3_cooling_state = False
+		self.zone_4_cooling_state = False
+		self.zone_5_cooling_state = False
+		self.zone_6_cooling_state = False
+		self.zone_7_cooling_state = False
+		self.zone_8_cooling_state = False
+		self.zone_9_cooling_state = False
+		self.zone_10_cooling_state = False
+		self.zone_11_cooling_state = False
+		self.zone_12_cooling_state = False
 		self.base_ids = {
 			1: (4, 5, 8, 9, 126, 127, 128, 129),
 			2: (38, 39, 40, 41, 132, 133, 134, 135),
@@ -9521,17 +9545,27 @@ class BasePlugin:
 							continue
 
 						else:
-							Domoticz.Debug(f"Zone_{i} is within the limits | Zone_{i} határértéken belül")
-							self.switchzone_F(i, True)
-							if self.switchElsodleges_F and Devices[215].sValue == "10":
-								self.send_AC_command(i, "F", "On")
-							elif self.Masodlagos_F and Devices[215].sValue == "20":
-								self.send_AC_command(i, "F", "On")
+							# Keep previous heating state within hysteresis limits | A hiszterézishatárok között megtartjuk az előző fűtési állapotot
+							zone_state = getattr(self, f'zone_{i}_heating_state', False)
+
+							Domoticz.Debug(f"Zone_{i} within hysteresis limits, previous state: {zone_state} | Zone_{i} hiszterézishatárok között, előző állapot: {zone_state}")
+
+							self.switchzone_F(i, zone_state)
+
+							if zone_state:
+								if self.switchElsodleges_F and Devices[215].sValue == "10":
+									self.send_AC_command(i, "F", "On")
+								elif self.Masodlagos_F and Devices[215].sValue == "20":
+									self.send_AC_command(i, "F", "On")
+								else:
+									self.send_AC_command(i, "F", "Off")
+
+								self.update_setpoint_pluss(i)
+								self.operation.add(i)
 							else:
 								self.send_AC_command(i, "F", "Off")
+								self.update_setpoint_minusz(i)
 
-							self.update_setpoint_pluss(i)
-							self.operation.add(i)
 							continue
 					else:
 						self.switchzone_F(i, False)
@@ -10567,17 +10601,27 @@ class BasePlugin:
 							continue
 						
 						else:
-							Domoticz.Debug(("Zone is within its threshold range: continue | " + (f"Zone_{i} hatarerteken belul, megz tovabb")))
-							self.switchzone_H(i, True)
-							if self.switchElsodleges_H and Devices[215].sValue == "10":
-								self.send_AC_command(i, "H", "On")
-							elif self.switchMasodlagos_H and Devices[215].sValue == "20":
-								self.send_AC_command(i, "H", "On")
-							else: 
-								self.send_AC_command(i, "H", "Off")
+							# Keep previous cooling state within hysteresis limits | A hiszterézishatárok között megtartjuk az előző hűtési állapotot
+							zone_state = getattr(self, f'zone_{i}_cooling_state', False)
 
-							self.update_setpoint_pluss(i)
-							self.operation.add(i)
+							Domoticz.Debug(f"Zone_{i} within hysteresis limits, previous cooling state: {zone_state} | Zone_{i} hiszterézishatárok között, előző hűtési állapot: {zone_state}")
+
+							self.switchzone_H(i, zone_state)
+
+							if zone_state:
+								if self.switchElsodleges_H and Devices[215].sValue == "10":
+									self.send_AC_command(i, "H", "On")
+								elif self.switchMasodlagos_H and Devices[215].sValue == "20":
+									self.send_AC_command(i, "H", "On")
+								else:
+									self.send_AC_command(i, "H", "Off")
+
+								self.update_setpoint_pluss(i)
+								self.operation.add(i)
+							else:
+								self.send_AC_command(i, "H", "Off")
+								self.update_setpoint_minusz(i)
+
 							continue
 
 					else:
@@ -10594,7 +10638,7 @@ class BasePlugin:
 
 					Domoticz.Debug("Dew-point-based cooling control | Harmatpont hűtésvezérlés")
 
-					self.Kevero_1_temp_target = int(self.minindewpoint +  self.Kevero_1_harmatkorr)
+					self.Kevero_1_temp_target = int(self.maxindewpoint +  self.Kevero_1_harmatkorr)
 					Devices[72].Update(nValue=0, sValue=str(self.Kevero_1_temp_target), TimedOut=False)
 
 					if self.Kevero_1_temp_aktual - self.Kevero_1_harmatkorr < self.minindewpoint :
@@ -10613,7 +10657,7 @@ class BasePlugin:
 						self.switch_kevero_1_minusz(False)
 
 
-					self.Kevero_2_temp_target = int(self.minindewpoint +  self.Kevero_2_harmatkorr)
+					self.Kevero_2_temp_target = int(self.maxindewpoint +  self.Kevero_2_harmatkorr)
 					Devices[73].Update(nValue=0, sValue=str(self.Kevero_2_temp_target), TimedOut=False)
 
 					if self.Kevero_2_temp_aktual - self.Kevero_2_harmatkorr < self.minindewpoint :
@@ -11706,20 +11750,27 @@ class BasePlugin:
 			self.switchappend(idx,command)
 
 	def switchzone_F(self, zone: int, switch: bool):
-		
+
 		if getattr(self, f'Zone_TempSensors_{zone}'):
 			command = "On" if switch else "Off"
-			Domoticz.Debug(f"Cooling zone switch: switchzone_{zone}_F '{command}' | Hűtési zóna kapcsolása: switchzone_{zone}_F '{command}'")
+			Domoticz.Debug(f"Heating zone switch: switchzone_{zone}_F '{command}' | Fűtési zóna kapcsolása: switchzone_{zone}_F '{command}'")
+
+			# Store the heating zone state | Fűtési zóna állapotának eltárolása
+			setattr(self, f'zone_{zone}_heating_state', switch)
 
 			for idx in getattr(self, f'Zone_{zone}_F'):
-					self.switchappend(idx, command)
+				self.switchappend(idx, command)
 
 
 
 	def switchzone_H(self, zone: int, switch: bool):
+
 		if getattr(self, f'Zone_TempSensors_{zone}'):
 			command = "On" if switch else "Off"
-			Domoticz.Debug(f"Heating zone switch: switchzone_{zone}_H '{command}' | Fűtési zóna kapcsolása: switchzone_{zone}_H '{command}'")
+			Domoticz.Debug(f"Cooling zone switch: switchzone_{zone}_H '{command}' | Hűtési zóna kapcsolása: switchzone_{zone}_H '{command}'")
+
+			# Store the cooling zone state | Hűtési zóna állapotának eltárolása
+			setattr(self, f'zone_{zone}_cooling_state', switch)
 
 			for idx in getattr(self, f'Zone_{zone}_H'):
 				self.switchappend(idx, command)
