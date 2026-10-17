@@ -12164,8 +12164,8 @@ class BasePlugin:
 							setpoint_minusz = htargettemp_also + komp
 							Domoticz.Debug(f"Lower heating target + compensation | Alsó fűtési célérték + kompenzáció: ")
 					else:
-						setpoint_minusz = htargettemp_felsoalso
-						Domoticz.Debug(f"Upper/lower heating target | Felső/alsó fűtési célérték: ")
+						setpoint_minusz = htargettemp_also + komp
+						Domoticz.Debug(f"Lower cooling target + compensation | Alsó hűtési célérték + kompenzáció: {setpoint_minusz}")
 				else: 
 					setpoint_minusz = round(setpoint_minusz * 2) / 2
 					setpoint_minusz = max(htargettemp_also - 5, min(setpoint_minusz, htargettemp_also))
