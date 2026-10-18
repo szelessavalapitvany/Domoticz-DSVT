@@ -1927,7 +1927,7 @@
 
 		document.getElementById('submitBtn_' + i).addEventListener('click', (function (i_copy) {
 
-			return function () {
+			return async function () {
 				let mode1List = [], mode2List = [], mode3List = [], mode4List = [], mode5List = [];
 				let setpointUpdates = [];
 				let data = {
@@ -1993,177 +1993,122 @@
 
 				const url = `${window.location.protocol}//${window.location.hostname}${port}/json.htm?type=command&param=updatehardware&htype=94&loglevel=7&extra=DSVT_HMV_ZONE_12&idx=${dsvt[i_copy].id}&enabled=true&datatimeout=0&name=${dsvt[i_copy].name}&address=${dsvt[i_copy].host}&port=${dsvt[i_copy].port}&username=${dsvt[i_copy].uname}&password=${dsvt[i_copy].pass}&${mode1QueryString}&${mode2QueryString}&${mode3QueryString}&${mode4QueryString}&${mode5QueryString}&${mode6QueryString}`;
 				
-				showSaveStatus();
-				logToScreen("Save process started");
+				// Perform requests sequentially and verify both HTTP and Domoticz API status | Kérések soros végrehajtása, HTTP- és Domoticz API-válasz ellenőrzéssel
+				async function apiRequest(requestUrl) {
+					const controller = new AbortController();
+					const timer = setTimeout(() => controller.abort(), 12000);
+					try {
+						const response = await fetch(requestUrl, {signal: controller.signal, cache: 'no-store'});
+						if (!response.ok) throw new Error(`HTTP ${response.status}`);
+						const body = await response.json();
+						if (!body || body.status !== 'OK') throw new Error(`Domoticz status: ${body?.status ?? 'missing'}`);
+						return body;
+					} finally {
+						clearTimeout(timer);
+					}
+				}
 
+				// Compare the saved device configuration before issuing updatehardware | Mentett eszközkonfiguráció összehasonlítása az updatehardware hívás előtt
+				function normalizedMode(value) {
+					return String(value ?? '').split(',').map(item => item.trim()).filter(Boolean).sort().join(',');
+				}
+				const newModes = [mode1List, mode2List, mode3List, mode4List, mode5List].map(list => normalizedMode(list.join(',')));
+				const oldModes = [1, 2, 3, 4, 5].map(n => normalizedMode(dsvt[i_copy][`Mode${n}`]));
+				const mode6Changed = String(dsvt[i_copy].Mode6 ?? '') !== data.Mode6.join(',');
+				const hardwareChanged = mode6Changed || newModes.some((value, index) => value !== oldModes[index]);
+
+				// Only update air-conditioner variables whose actual values changed | Csak a ténylegesen megváltozott klímaváltozók frissítése
+				const climateUpdates = [];
 				for (let z = 1; z <= 12; z++) {
-					["F", "H"].forEach(tipus => {
-						const varname = `${dsvt[i_copy].name}_Z_${z}_AC_${tipus}`;
-						const vendor = document.getElementById(`${tipus}vendor_${i_copy}_${z}`)?.value;
-						const ip = document.getElementById(`${tipus}ip_${i_copy}_${z}`)?.value;
-						const fanspeed = document.getElementById(`${tipus}fanspeed_${i_copy}_${z}`)?.value;
-						const swingv = document.getElementById(`${tipus}swingv_${i_copy}_${z}`)?.value;
-						const swingh = document.getElementById(`${tipus}swingh_${i_copy}_${z}`)?.value;
-						const komp = document.getElementById(`${tipus}komp_${i_copy}_${z}`)?.value;
-						const hatar_low = document.getElementById(`${tipus}hatarlow_${i_copy}_${z}`)?.value;
-						const hatar_top = document.getElementById(`${tipus}hatartop_${i_copy}_${z}`)?.value;
-						const target_off = document.getElementById(`${tipus}target_off_${i_copy}_${z}`)?.checked ? true : false;
-						const AC_jelenlet = document.getElementById(`${tipus}AC_jelenlet_${i_copy}_${z}`)?.value || "None";
-
-						if (vendor === undefined || ip === undefined || fanspeed === undefined ||
-							swingv === undefined || swingh === undefined ||
-							komp === undefined || hatar_low === undefined || hatar_top === undefined)
-							return;
+					for (const tipus of ['F', 'H']) {
+						const field = suffix => document.getElementById(`${tipus}${suffix}_${i_copy}_${z}`);
+						const vendor = field('vendor')?.value;
+						const ip = field('ip')?.value;
+						const fan = field('fanspeed')?.value;
+						const swingv = field('swingv')?.value;
+						const swingh = field('swingh')?.value;
+						const komp = field('komp')?.value;
+						const low = field('hatarlow')?.value;
+						const top = field('hatartop')?.value;
+						if ([vendor, ip, fan, swingv, swingh, komp, low, top].some(v => v === undefined)) continue;
 
 						const jsonData = {
-							type: vendor,
-							IP: ip,
-							fanspeed: fanOptions.indexOf(fanspeed),
+							type: vendor, IP: ip,
+							fanspeed: fanOptions.indexOf(fan),
 							swingv: swingVOptions.indexOf(swingv),
 							swingh: swingHOptions.indexOf(swingh),
-							komp: Number(komp),
-							hatar_low: Number(hatar_low),
-							hatar_top: Number(hatar_top),
-							target_off: target_off,
-							AC_jelenlet: AC_jelenlet
+							komp: Number(komp), hatar_low: Number(low), hatar_top: Number(top),
+							target_off: !!field('target_off')?.checked,
+							AC_jelenlet: field('AC_jelenlet')?.value || 'None'
 						};
+						const original = dsvt[i_copy].klimatabla.find(row => row.zona == z && row.tipus == tipus);
+						// Missing records use the same defaults as the form | Hiányzó rekordoknál az űrlap alapértékeit használjuk
+						const defaults = {type:'AUTO', IP:'-', fanspeed:0, swingv:0, swingh:0,
+							komp:0, hatar_low:0, hatar_top: tipus === 'H' ? 2 : 0,
+							target_off:false, AC_jelenlet:'None'};
+						const previous = original || defaults;
+						const changed = Object.keys(jsonData).some(key => {
+							if (['fanspeed', 'swingv', 'swingh', 'komp', 'hatar_low', 'hatar_top'].includes(key))
+								return Number(previous[key] ?? defaults[key]) !== jsonData[key];
+							if (key === 'target_off') return (previous[key] === true) !== jsonData[key];
+							return String(previous[key] ?? defaults[key]) !== String(jsonData[key]);
+						});
+						if (changed) climateUpdates.push({name: `${dsvt[i_copy].name}_Z_${z}_AC_${tipus}`, value: JSON.stringify(jsonData)});
+					}
+				}
 
-						const value = JSON.stringify(jsonData);
-						const setvarurl = `${window.location.protocol}//${window.location.hostname}${port}/json.htm?type=command&param=updateuservariable&vname=${encodeURIComponent(varname)}&vtype=2&vvalue=${encodeURIComponent(value)}`;
+				// Do not restart the plugin when nothing was changed | Változatlan konfiguráció esetén ne indítsuk újra a plugint
+				if (!hardwareChanged && climateUpdates.length === 0 && setpointUpdates.length === 0) {
+					console.log('No configuration changes | Nincs konfigurációs változás');
+					return;
+				}
 
-						//console.log("Sending | Küldés:", setvarurl);
-						try {
-							const xhr = new XMLHttpRequest();
-							xhr.open("GET", setvarurl, false); // Synchronous request | Szinkron kérés
-							xhr.send();
-						} catch (e) {
-							console.error("Error saving user variable | Hiba a felhasználói változó mentése közben:", e);
-						}
+				const saveButton = document.getElementById('submitBtn_' + i_copy);
+				saveButton.disabled = true;
+				showSaveStatus();
+				showLogStatus();
+				logToScreen('Save process started');
+				try {
+					for (const update of climateUpdates) {
+						const query = new URLSearchParams({type:'command', param:'updateuservariable', vname:update.name, vtype:'2', vvalue:update.value});
+						await apiRequest(`${window.location.origin}/json.htm?${query}`);
+						console.log('Climate variable updated | Klímaváltozó frissítve:', update.name);
+					}
+
+					// Update setpoints before hardware reconfiguration can restart the plugin | Célhőmérsékletek mentése a plugin újraindítását kiváltó konfigurációfrissítés előtt
+					for (const update of setpointUpdates) {
+						const query = new URLSearchParams({type:'command', param:'setused', idx:String(update.idx), name:update.name, setpoint:String(update.value), protected:'false', used:'true'});
+						await apiRequest(`${window.location.origin}/json.htm?${query}`);
+						logToScreen('({idx}) Request sent successfully', {idx:update.idx});
+					}
+
+					if (hardwareChanged) {
+						logToScreen('Updatehardware request sent');
+						await apiRequest(url);
+					}
+					logToScreen('All setpoints updated');
+					logToScreen('Update complete, reloading page...');
+					location.reload();
+				} catch (error) {
+					// Keep the page available for diagnostics instead of reloading on error | Hiba esetén maradjon nyitva az oldal a diagnosztikához
+					console.error('Save failed | Mentési hiba:', error);
+					console.error('Save failed | Mentés sikertelen:', error.message);
+					logToScreen('Save failed | A mentés sikertelen');
+					const spinner = document.querySelector('#saveStatus .spin-icon');
+					if (spinner) spinner.style.display = 'none';
+					const closeButton = document.createElement('button');
+					closeButton.type = 'button';
+					closeButton.textContent = 'Close | Bezárás';
+					closeButton.addEventListener('click', () => {
+						closeButton.remove();
+						if (spinner) spinner.style.display = '';
+						hideSaveStatus();
 					});
+					const logBox = document.getElementById('logOutput');
+					if (logBox) logBox.appendChild(closeButton);
+					saveButton.disabled = false;
 				}
 
-
-
-				function sendRequest(url) {
-					console.log("sendRequest started | A sendRequest elindult:", url);
-					try {
-						const xhr = new XMLHttpRequest();
-						xhr.open("GET", url, true);
-						xhr.send();
-						showLogStatus();
-						console.log("Updatehardware request sent | Az updatehardware kérés elküldve.");
-						logToScreen("Updatehardware request sent");
-					} catch (e) {
-						console.error("Error in sendRequest | Hiba a sendRequest függvényben:", e);
-						logToScreen("Updatehardware request failed");
-					}
-				}
-
-				function sendSetpointUpdatesSequentiallyWithDelay(updates, callback) {
-
-					if (!updates || updates.length === 0) {
-						callback();
-						return;
-					}
-
-					const update = updates.shift();
-					const idx_copy = update.idx;
-					const maxRetries = 3;
-					let attempt = 0;
-
-					function trySend() {
-						attempt++;
-						logToScreen("({idx}) Attempt {attempt}/{maxRetries}: {name} → {value}°C", {idx: idx_copy, attempt, maxRetries, name: update.name, value: update.value});
-
-						const setpointurl = `${window.location.origin}/json.htm?type=command&param=setused&idx=${encodeURIComponent(update.idx)}&name=${encodeURIComponent(update.name)}&setpoint=${encodeURIComponent(update.value)}&protected=false&used=true`;
-
-						const xhr = new XMLHttpRequest();
-						let settled = false;
-						let timeoutId = null;
-
-						// Finalize an attempt only once, regardless of which event arrives first | Egy próbálkozást csak egyszer zárunk le, függetlenül az események sorrendjétől
-						function settle(success) {
-							if (settled) return;
-							settled = true;
-							if (timeoutId !== null) clearTimeout(timeoutId);
-							xhr.onreadystatechange = null;
-							xhr.onerror = null;
-
-							if (success) {
-								logToScreen("({idx}) Request sent successfully", {idx: idx_copy});
-								setTimeout(() => {
-									sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
-								}, 1000);
-							} else {
-								retryOrSkip();
-							}
-						}
-
-						function retryOrSkip() {
-							if (attempt < maxRetries) {
-								setTimeout(trySend, 5000); // Retry after a short delay | Újrapróbálkozás rövid késleltetéssel
-							} else {
-								logToScreen("({idx}) Maximum retries reached, skipping this update", {idx: idx_copy});
-								setTimeout(() => {
-									sendSetpointUpdatesSequentiallyWithDelay(updates, callback);
-								}, 1000);
-							}
-						}
-
-						xhr.onreadystatechange = function () {
-							if (xhr.readyState !== 4 || settled) return;
-							if (xhr.status !== 200) {
-								logToScreen("({idx}) HTTP error: {status}", {idx: idx_copy, status: xhr.status});
-								if (xhr.status === 404) {
-									// Stop the batch on HTTP 404 instead of retrying an invalid endpoint | HTTP 404 esetén leállítjuk a mentési sort, és nem próbálkozunk újra hibás végponttal
-									settled = true;
-									if (timeoutId !== null) clearTimeout(timeoutId);
-									xhr.onreadystatechange = null;
-									xhr.onerror = null;
-									console.error("Setpoint update batch stopped after HTTP 404 | A célhőmérséklet-frissítési sor leállt HTTP 404 után", idx_copy);
-									return;
-								}
-							}
-							settle(xhr.status === 200);
-						};
-
-						xhr.onerror = function () {
-							if (settled) return;
-							logToScreen("({idx}) Network error", {idx: idx_copy});
-							settle(false);
-						};
-
-						try {
-							xhr.open("GET", setpointurl, true);
-							timeoutId = setTimeout(() => {
-								if (settled) return;
-								logToScreen("({idx}) Request timed out", {idx: idx_copy});
-								settle(false);
-								xhr.abort(); // Stop the timed-out request before retrying | Az időtúllépett kérés megszakítása az újrapróbálkozás előtt
-							}, 3000);
-							xhr.send();
-						} catch (e) {
-							if (settled) return;
-							logToScreen("({idx}) Exception: {error}", {idx: idx_copy, error: e.message});
-							settle(false);
-						}
-					}
-
-					trySend();
-				}
-
-				sendRequest(url);
-
-				setTimeout(() => {
-					sendSetpointUpdatesSequentiallyWithDelay([...setpointUpdates], () => {
-						console.log("All setpoints updated | Minden célhőmérséklet frissítve");
-						logToScreen("All setpoints updated");
-						setTimeout(() => {
-							logToScreen("Update complete, reloading page...");
-							location.reload();
-						}, 1000);
-					});
-				}, 5000);
 			};
 
 		})(i));
