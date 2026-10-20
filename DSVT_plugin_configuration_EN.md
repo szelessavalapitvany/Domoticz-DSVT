@@ -2,6 +2,9 @@
 
 > **Source:** `plugin.py`, as of October 20, 2026 (version indicated in the file: 1.2.1).  
 > This guide follows the field order in **Domoticz → Setup → Hardware → DSVT + HMV (DHW) + 12 ZONE**.
+>
+> **Important!** Whenever possible, **do not edit these parameters directly in the Domoticz hardware configuration fields**. Instead, configure them through the **HTML configuration interface installed in the plugin’s `templates` directory**. The field-by-field reference below explains where the parameters belong and is mainly intended for verification or manual configuration.
+
 
 ## General rules
 
