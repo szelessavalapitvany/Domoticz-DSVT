@@ -2,6 +2,8 @@
 
 > **Alap:** `plugin.py`, 2026. október 20-i állapot (a fájlban jelzett verzió: 1.2.1).  
 > A dokumentáció a **Domoticz → Beállítások → Hardver → DSVT + HMV (DHW) + 12 ZONE** felület mezőinek sorrendjét követi.
+>
+> **Fontos!** A beállításokat lehetőség szerint **ne közvetlenül a Domoticz hardverbeállításainak paramétermezőiben szerkeszd**, hanem a plugin `templates` könyvtárába telepített **HTML konfigurációs felületen** végezd el. Az alábbi mezőnkénti leírás a paraméterek jelentését és helyét ismerteti, elsősorban ellenőrzéshez vagy kézi beállításhoz.
 
 ## Általános szabályok
 
