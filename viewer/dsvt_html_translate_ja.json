@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) リクエストがタイムアウトしました",
     "({idx}) Exception: {error}": "({idx}) 例外: {error}",
     "All setpoints updated": "すべての目標温度を更新しました",
-    "Update complete, reloading page...": "更新が完了しました。ページを再読み込みしています..."
+    "Update complete, reloading page...": "更新が完了しました。ページを再読み込みしています...",
+    "Frost protection thermometers": "凍結防止用温度センサー",
+    "Frost protection devices": "凍結防止装置",
+    "➕ Add switch": "➕ スイッチを追加",
+    "Pump protection devices": "保護対象のバルブとポンプ",
+    "➕ Add pump switch": "➕ ポンプスイッチを追加",
+    "Day of week": "作動曜日",
+    "Start hour": "開始時刻",
+    "Running time (minutes)": "運転時間（分）",
+    "Device 1 DHW disinfection": "機器1 給湯消毒",
+    "Device 2 DHW disinfection": "機器2 給湯消毒",
+    "Day": "曜日",
+    "Hour": "時刻",
+    "Off": "オフ"
 }

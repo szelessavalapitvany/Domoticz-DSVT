@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Time-out van verzoek",
     "({idx}) Exception: {error}": "({idx}) Uitzondering: {error}",
     "All setpoints updated": "Alle ingestelde doeltemperaturen bijgewerkt",
-    "Update complete, reloading page...": "Bijwerken voltooid, pagina wordt opnieuw geladen..."
+    "Update complete, reloading page...": "Bijwerken voltooid, pagina wordt opnieuw geladen...",
+    "Frost protection thermometers": "Vorstbeveiligingstemperatuursensoren",
+    "Frost protection devices": "Vorstbeveiligingsapparaten",
+    "➕ Add switch": "➕ Schakelaar toevoegen",
+    "Pump protection devices": "Te beschermen kleppen en pompen",
+    "➕ Add pump switch": "➕ Pompschakelaar toevoegen",
+    "Day of week": "Schakeldag",
+    "Start hour": "Startuur",
+    "Running time (minutes)": "Looptijd (minuten)",
+    "Device 1 DHW disinfection": "Warmwaterdesinfectie – apparaat 1",
+    "Device 2 DHW disinfection": "Warmwaterdesinfectie – apparaat 2",
+    "Day": "Dag",
+    "Hour": "Uur",
+    "Off": "Uit"
 }

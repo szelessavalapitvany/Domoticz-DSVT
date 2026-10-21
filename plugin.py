@@ -8,10 +8,10 @@ https://open-meteo.com/
 
 Weather data is licensed under CC BY 4.0.
 
-Version: 1.2.1 (2026-10-09)
+Version: 1.3.0 (2026-10-20)
 """
 """
-<plugin key="DSVT_HMV_ZONE_12" name="DSVT + HMV (DHW) + 12 ZONE" author="Szelessav" version="1.2.1" externallink="https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer">
+<plugin key="DSVT_HMV_ZONE_12" name="DSVT + HMV (DHW) + 12 ZONE" author="Szelessav" version="1.3.0" externallink="https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer">
 	<description>
 		<h2>Dual Smart Virtual Thermostat + HMV (DHW) ZONE 12</h2><br/>
 		<br/>
@@ -110,6 +110,16 @@ class BasePlugin:
 		self.Zone_TempSensors_11 = []
 		self.Zone_TempSensors_12 = []
 		self.KulsoTempSensors = []
+		self.FrostTempSensors = []
+		self.FrostSwitches = []
+		self.FrostLimit = 5.0
+		self.FrostHysteresis = 1.0
+		self.FrostTemp = None
+		self.FrostActive = False
+		self.PumpProtectionSwitches = []
+		self.PumpProtectionDay = None
+		self.PumpProtectionHour = None
+		self.PumpProtectionMinutes = None
 		self.TartalyTempSensors = []
 		self.PufferTempSensors = []
 		self.szobaTempSensors = []
@@ -474,6 +484,8 @@ class BasePlugin:
 		self.dhw_external_limit = None
 		self.dhw_external_time_limit = None
 		self._fav_actions = {}
+		self._ac_variables_cache = None
+		self._ac_variables_cache_until = 0.0
 
 		self.InternalsDefaults = {
 			'fjelenstatus' : 0,
@@ -481,7 +493,8 @@ class BasePlugin:
 			'switchTimer_dhw' : 0,
 			'power_dhw_consumption' : 0,
 			'power_buffer_consumption' : 0,
-			'power_hc_consumption' : 0}
+			'power_hc_consumption' : 0,
+			'pump_protection_run': 0}
 		self.Internals = self.InternalsDefaults.copy()
 		self.AutocallibDefaults = {
 			'LastPwr': 0,
@@ -851,6 +864,7 @@ class BasePlugin:
 		self.dhw_dif_felements = 3
 		self.P_dif_felements = 3
 		self.P_hiszterezis = 3.0
+		self.disinfection_complete = False
 		self.intemp_avglist = []
 		self.TartalyAktuallist = []
 		self.PufferAktuallist = []
@@ -1055,19 +1069,19 @@ class BasePlugin:
 			Domoticz.Device(Name= tl.t("Solar limit, Heating - Cooling (Watt)"), Unit=125, TypeName="Selector Switch", Switchtype=18, Image=15, Options=Options, Used=0).Create()
 			devicecreated.append(deviceparam(125, 0, "0"))
 		if 3 not in Devices:
-			Domoticz.Device(Name= tl.t("Heating-colling, dual temperature difference value"), Unit=3, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Heating-colling, dual temperature difference value"), Unit=3, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(3, 0, "1"))
 		if 7 not in Devices:
-			Domoticz.Device(Name= tl.t("Heating 2. device switching limit"), Unit=7, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Heating 2. device switching limit"), Unit=7, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(7, 0, "-5"))
 		if 252 not in Devices:
-			Domoticz.Device(Name= tl.t("Cooling 2. device switching limit"), Unit=252, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Cooling 2. device switching limit"), Unit=252, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(252, 0, "28"))
 		if 225 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW 2. device switching limit"), Unit=225, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW 2. device switching limit"), Unit=225, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(225, 0, "-5"))
 		if 227 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer 2. device switching limit"), Unit=227, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer 2. device switching limit"), Unit=227, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(227, 0, "-5"))
 		if 6 not in Devices:
 			Domoticz.Device(Name= tl.t("Calculated current temperature"), Unit=6, TypeName="Temperature", Used=1).Create()
@@ -1077,7 +1091,7 @@ class BasePlugin:
 			Domoticz.Device(Name= tl.t("Heating target temperature"), Unit=10, TypeName="Temperature", Used=1).Create()
 			devicecreated.append(deviceparam(10, 0, "20"))
 		if 18 not in Devices:
-			Domoticz.Device(Name= tl.t("Cooling-heating external hysteresis"), Unit=18, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Cooling-heating external hysteresis"), Unit=18, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(18, 0, "0.5"))
 		if 12 not in Devices:
 			Options = {"LevelActions": "||",
@@ -1095,46 +1109,46 @@ class BasePlugin:
 			devicecreated.append(deviceparam(13, 0, "0"))
 			self.addfavorite(Devices[13].ID)
 		if 221 not in Devices:
-			Domoticz.Device(Name= tl.t("Cooling-Heating 1st dew point compensation"), Unit=221, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Cooling-Heating 1st dew point compensation"), Unit=221, Type=242, Subtype=1, Options={"ValueMin": "-15", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(221, 0, "0"))
 		if 222 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW dew point compensation"), Unit=222, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW dew point compensation"), Unit=222, Type=242, Subtype=1, Options={"ValueMin": "-15", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(222, 0, "0"))
 		if 223 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer dew point compensation"), Unit=223, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer dew point compensation"), Unit=223, Type=242, Subtype=1, Options={"ValueMin": "-15", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(223, 0, "0"))
 		if 11 not in Devices:
 			Domoticz.Device(Name= tl.t("Current power value"), Unit=11, Type=243, Subtype=6, Used=0).Create()
 			devicecreated.append(deviceparam(11, 0, "0"))
 		if 14 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW normal tank temperature"), Unit=14, Type=242, Subtype=1, Used=0).Create()
+			Domoticz.Device(Name= tl.t("DHW normal tank temperature"), Unit=14, Type=242, Subtype=1, Options={"ValueMin": "20", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=0).Create()
 			devicecreated.append(deviceparam(14, 0, "45"))
 		if 30 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW economical tank temperature"), Unit=30, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW economical tank temperature"), Unit=30, Type=242, Subtype=1, Options={"ValueMin": "20", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(30, 0, "40"))
 		if 76 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW disinfection temperature"), Unit=76, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW disinfection temperature"), Unit=76, Type=242, Subtype=1, Options={"ValueMin": "50", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(76 ,0, "65"))
 		if 15 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW external hysteresis"), Unit=15, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW external hysteresis"), Unit=15, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(15, 0, "0.5"))
 		if 16 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW 1. device switching temperature"), Unit=16, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW 1. device switching temperature"), Unit=16, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(16 ,0, "-5.0"))
 		if 17 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW tank hysteresis"), Unit=17, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW tank hysteresis"), Unit=17, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(17 ,0, "3"))
 		if 80 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW hysteresis solar panel"), Unit=80, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW hysteresis solar panel"), Unit=80, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(80 ,0, "0.5"))
 		if 81 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW temperature at solar panel"), Unit=81, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW temperature at solar panel"), Unit=81, Type=242, Subtype=1, Options={"ValueMin": "20", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(81 ,0, "50"))
 		if 79 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW heating purpose depends on outside temperature"), Unit=79, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW heating purpose depends on outside temperature"), Unit=79, Type=242, Subtype=1, Options={"ValueMin": "20", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(79, 0, "45"))
 		if 31 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW target external switching hysteresis"), Unit=31, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW target external switching hysteresis"), Unit=31, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(31, 0, "1"))
 		if 19 not in Devices:
 			Domoticz.Device(Name= tl.t("Calculated current tank temperature"), Unit=19, TypeName="Temperature", Used=0).Create()
@@ -1198,19 +1212,19 @@ class BasePlugin:
 			Domoticz.Device(Name="2 PE", Unit=161, Type=244, Subtype=73, Switchtype=0, Used=0).Create()
 			devicecreated.append(deviceparam(161, 0, "Off"))
 		if 35 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW device 1 external E cartridge switching limit"), Unit=35, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW device 1 external E cartridge switching limit"), Unit=35, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(35, 0, "15"))
 		if 36 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW device 2 external E cartridge switching limit"), Unit=36, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW device 2 external E cartridge switching limit"), Unit=36, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(36, 0, "15"))
 		if 115 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW device 1 tank E cartridge switching limit"), Unit=115, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW device 1 tank E cartridge switching limit"), Unit=115, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(115, 0, "45"))
 		if 116 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW device 2 tank E cartridge switching limit"), Unit=116, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW device 2 tank E cartridge switching limit"), Unit=116, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(116, 0, "45"))
 		if 37 not in Devices:
-			Domoticz.Device(Name= tl.t("DHW dual temperature diff"), Unit=37, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("DHW dual temperature diff"), Unit=37, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(37, 0, "2"))
 		if 101 not in Devices:
 			Options = {"LevelActions": "||",
@@ -1221,19 +1235,19 @@ class BasePlugin:
 			devicecreated.append(deviceparam(101, 0, "10"))
 
 		if 64 not in Devices:
-			Domoticz.Device(Name=tl.t("Heating hysteresis"), Unit=64, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Heating hysteresis"), Unit=64, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(64 ,0, "0.1"))
 		if 216 not in Devices:
-			Domoticz.Device(Name=tl.t("Cooling hysteresis"), Unit=216, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Cooling hysteresis"), Unit=216, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(216 ,0, "0.2"))
 		if 155 not in Devices:
-			Domoticz.Device(Name=tl.t("Automatic target value + -"), Unit=155, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Automatic target value + -"), Unit=155, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(155 ,0, "1"))
 		if 67 not in Devices:
-			Domoticz.Device(Name= tl.t("Room max. difference"), Unit=67, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Room max. difference"), Unit=67, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(67 ,0, "1"))
 		if 213 not in Devices:
-			Domoticz.Device(Name= tl.t("Health cooling value"), Unit=213, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Health cooling value"), Unit=213, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "20", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(213 ,0, "10"))
 		if 214 not in Devices:
 			Options = {"LevelActions": "||",
@@ -1252,303 +1266,303 @@ class BasePlugin:
 		
 		# Zone 1 | 1. zóna
 		if 4 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 normal heating temperature"), Unit=4, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 normal heating temperature"), Unit=4, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(4, 0, "22"))
 		if 5 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 economical heating temperature"), Unit=5, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 economical heating temperature"), Unit=5, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(5 ,0, "20"))
 		if 8 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 normal cooling temperature"), Unit=8, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 normal cooling temperature"), Unit=8, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(8, 0, "24"))
 		if 9 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 economical cooling temperature"), Unit=9, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 economical cooling temperature"), Unit=9, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(9, 0, "26"))
 		if 126 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 heating + at solar limit"), Unit=126, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 heating + at solar limit"), Unit=126, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(126, 0, "2"))
 		if 127 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 cooling - at solar limit"), Unit=127, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 cooling - at solar limit"), Unit=127, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(127, 0, "-2"))
 		if 128 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 heating + at external temperature dependent"), Unit=128, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 heating + at external temperature dependent"), Unit=128, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(128, 0, "1"))
 		if 129 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 1 cooling - at external temperature dependent"), Unit=129, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 1 cooling - at external temperature dependent"), Unit=129, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(129, 0, "-1"))
 		# Zone 2 | 2. zóna
 		if 38 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 2 normal heating temperature"), Unit=38, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 2 normal heating temperature"), Unit=38, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(38, 0, "22"))
 		if 39 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 economical heating temperature"), Unit=39, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 economical heating temperature"), Unit=39, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(39 ,0, "20"))
 		if 40 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 normal cooling temperature"), Unit=40, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 normal cooling temperature"), Unit=40, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(40, 0, "24"))
 		if 41 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 economical cooling temperature"), Unit=41, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 economical cooling temperature"), Unit=41, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(41, 0, "26"))
 		if 132 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 heating + at solar limit"), Unit=132, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 heating + at solar limit"), Unit=132, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(132, 0, "2"))
 		if 133 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 cooling - at solar limit"), Unit=133, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 cooling - at solar limit"), Unit=133, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(133, 0, "-2"))
 		if 134 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 heating + at external temperature dependent"), Unit=134, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 heating + at external temperature dependent"), Unit=134, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(134, 0, "1"))
 		if 135 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 2 cooling - at external temperature dependent"), Unit=135, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 2 cooling - at external temperature dependent"), Unit=135, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(135, 0, "-1"))
 		# Zone 3 | 3. zóna
 		if 42 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 3 normal heating temperature"), Unit=42, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 3 normal heating temperature"), Unit=42, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(42, 0, "22"))
 		if 43 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 economical heating temperature"), Unit=43, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 economical heating temperature"), Unit=43, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(43 ,0, "20"))
 		if 44 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 normal cooling temperature"), Unit=44, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 normal cooling temperature"), Unit=44, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(44, 0, "24"))
 		if 45 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 economical cooling temperature"), Unit=45, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 economical cooling temperature"), Unit=45, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(45, 0, "26"))
 		if 136 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 heating + at solar limit"), Unit=136, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 heating + at solar limit"), Unit=136, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(136, 0, "2"))
 		if 137 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 cooling - at solar limit"), Unit=137, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 cooling - at solar limit"), Unit=137, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(137, 0, "-2"))
 		if 138 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 heating + at external temperature dependent"), Unit=138, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 heating + at external temperature dependent"), Unit=138, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(138, 0, "1"))
 		if 139 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 3 cooling - at external temperature dependent"), Unit=139, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 3 cooling - at external temperature dependent"), Unit=139, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(139, 0, "-1"))
 		# Zone 4 | 4. zóna
 		if 46 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 normal heating temperature"), Unit=46, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 normal heating temperature"), Unit=46, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(46, 0, "22"))
 		if 47 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 economical heating temperature"), Unit=47, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 economical heating temperature"), Unit=47, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(47 ,0, "20"))
 		if 48 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 normal cooling temperature"), Unit=48, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 normal cooling temperature"), Unit=48, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(48, 0, "24"))
 		if 49 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 economical cooling temperature"), Unit=49, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 economical cooling temperature"), Unit=49, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(49, 0, "26"))
 		if 140 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 heating + at solar limit"), Unit=140, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 heating + at solar limit"), Unit=140, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(140, 0, "2"))
 		if 141 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 cooling - at solar limit"), Unit=141, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 cooling - at solar limit"), Unit=141, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(141, 0, "-2"))
 		if 142 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 heating + at external temperature dependent"), Unit=142, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 heating + at external temperature dependent"), Unit=142, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(142, 0, "1"))
 		if 143 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 4 cooling - at external temperature dependent"), Unit=143, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 4 cooling - at external temperature dependent"), Unit=143, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(143, 0, "-1"))
 		# Zone 5 | 5. zóna
 		if 50 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 5 normal heating temperature"), Unit=50, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 5 normal heating temperature"), Unit=50, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(50, 0, "22"))
 		if 51 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 economical heating temperature"), Unit=51, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 economical heating temperature"), Unit=51, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(51 ,0, "20"))
 		if 52 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 normal cooling temperature"), Unit=52, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 normal cooling temperature"), Unit=52, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(52, 0, "24"))
 		if 53 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 economical cooling temperature"), Unit=53, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 economical cooling temperature"), Unit=53, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(53, 0, "26"))
 		if 144 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 heating + at solar limit"), Unit=144, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 heating + at solar limit"), Unit=144, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(144, 0, "2"))
 		if 145 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 cooling - at solar limit"), Unit=145, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 cooling - at solar limit"), Unit=145, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(145, 0, "-2"))
 		if 146 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 heating + at external temperature dependent"), Unit=146, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 heating + at external temperature dependent"), Unit=146, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(146, 0, "1"))
 		if 147 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 5 cooling - at external temperature dependent"), Unit=147, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 5 cooling - at external temperature dependent"), Unit=147, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(147, 0, "-1"))
 		# Zone 6 | 6. zóna
 		if 54 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 6 normal heating temperature"), Unit=54, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 6 normal heating temperature"), Unit=54, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(54, 0, "22"))
 		if 55 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 economical heating temperature"), Unit=55, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 economical heating temperature"), Unit=55, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(55 ,0, "20"))
 		if 56 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 normal cooling temperature"), Unit=56, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 normal cooling temperature"), Unit=56, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(56, 0, "24"))
 		if 57 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 economical cooling temperature"), Unit=57, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 economical cooling temperature"), Unit=57, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(57, 0, "26"))
 		if 148 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 heating + at solar limit"), Unit=148, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 heating + at solar limit"), Unit=148, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(148, 0, "2"))
 		if 149 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 cooling - at solar limit"), Unit=149, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 cooling - at solar limit"), Unit=149, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(149, 0, "-2"))
 		if 150 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 heating + at external temperature dependent"), Unit=150, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 heating + at external temperature dependent"), Unit=150, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(150, 0, "1"))
 		if 151 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 6 cooling - at external temperature dependent"), Unit=151, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 6 cooling - at external temperature dependent"), Unit=151, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(151, 0, "-1"))
 		# Zone 7 | 7. zóna
 		if 162 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 7 normal heating temperature"), Unit=162, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 7 normal heating temperature"), Unit=162, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(162, 0, "22"))
 		if 163 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 economical heating temperature"), Unit=163, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 economical heating temperature"), Unit=163, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(163 ,0, "20"))
 		if 164 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 normal cooling temperature"), Unit=164, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 normal cooling temperature"), Unit=164, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(164, 0, "24"))
 		if 165 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 economical cooling temperature"), Unit=165, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 economical cooling temperature"), Unit=165, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(165, 0, "26"))
 		if 166 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 heating + at solar limit"), Unit=166, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 heating + at solar limit"), Unit=166, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(166, 0, "2"))
 		if 167 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 cooling - at solar limit"), Unit=167, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 cooling - at solar limit"), Unit=167, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(167, 0, "-2"))
 		if 168 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 heating + at external temperature dependent"), Unit=168, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 heating + at external temperature dependent"), Unit=168, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(168, 0, "1"))
 		if 169 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 7 cooling - at external temperature dependent"), Unit=169, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 7 cooling - at external temperature dependent"), Unit=169, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(169, 0, "-1"))
 		# Zone 8 | 8. zóna
 		if 170 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 8 normal heating temperature"), Unit=170, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 8 normal heating temperature"), Unit=170, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(170, 0, "22"))
 		if 171 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 economical heating temperature"), Unit=171, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 economical heating temperature"), Unit=171, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(171 ,0, "20"))
 		if 172 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 normal cooling temperature"), Unit=172, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 normal cooling temperature"), Unit=172, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(172, 0, "24"))
 		if 173 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 economical cooling temperature"), Unit=173, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 economical cooling temperature"), Unit=173, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(173, 0, "26"))
 		if 174 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 heating + at solar limit"), Unit=174, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 heating + at solar limit"), Unit=174, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(174, 0, "2"))
 		if 175 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 cooling - at solar limit"), Unit=175, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 cooling - at solar limit"), Unit=175, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(175, 0, "-2"))
 		if 176 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 heating + at external temperature dependent"), Unit=176, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 heating + at external temperature dependent"), Unit=176, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(176, 0, "1"))
 		if 177 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 8 cooling - at external temperature dependent"), Unit=177, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 8 cooling - at external temperature dependent"), Unit=177, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(177, 0, "-1"))
 		# Zone 9 | 9. zóna
 		if 178 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 9 normal heating temperature"), Unit=178, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 9 normal heating temperature"), Unit=178, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(178, 0, "22"))
 		if 179 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 economical heating temperature"), Unit=179, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 economical heating temperature"), Unit=179, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(179 ,0, "20"))
 		if 180 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 normal cooling temperature"), Unit=180, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 normal cooling temperature"), Unit=180, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(180, 0, "24"))
 		if 181 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 economical cooling temperature"), Unit=181, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 economical cooling temperature"), Unit=181, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(181, 0, "26"))
 		if 182 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 heating + at solar limit"), Unit=182, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 heating + at solar limit"), Unit=182, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(182, 0, "2"))
 		if 183 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 cooling - at solar limit"), Unit=183, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 cooling - at solar limit"), Unit=183, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(183, 0, "-2"))
 		if 184 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 heating + at external temperature dependent"), Unit=184, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 heating + at external temperature dependent"), Unit=184, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(184, 0, "1"))
 		if 185 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 9 cooling - at external temperature dependent"), Unit=185, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 9 cooling - at external temperature dependent"), Unit=185, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(185, 0, "-1"))
 		# Zone 10 | 10. zóna
 		if 186 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 10 normal heating temperature"), Unit=186, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 10 normal heating temperature"), Unit=186, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(186, 0, "22"))
 		if 187 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 economical heating temperature"), Unit=187, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 economical heating temperature"), Unit=187, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(187,0, "20"))
 		if 188 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 normal cooling temperature"), Unit=188, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 normal cooling temperature"), Unit=188, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(188, 0, "24"))
 		if 189 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 economical cooling temperature"), Unit=189, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 economical cooling temperature"), Unit=189, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(189, 0, "26"))
 		if 190 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 heating + at solar limit"), Unit=190, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 heating + at solar limit"), Unit=190, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(190, 0, "2"))
 		if 191 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 cooling - at solar limit"), Unit=191, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 cooling - at solar limit"), Unit=191, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(191, 0, "-2"))
 		if 192 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 heating + at external temperature dependent"), Unit=192, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 heating + at external temperature dependent"), Unit=192, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(192, 0, "1"))
 		if 193 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 10 cooling - at external temperature dependent"), Unit=193, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 10 cooling - at external temperature dependent"), Unit=193, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(193, 0, "-1"))
 		# Zone 11 | 11. zóna
 		if 194 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 11 normal heating temperature"), Unit=194, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 11 normal heating temperature"), Unit=194, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(194, 0, "22"))
 		if 195 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 economical heating temperature"), Unit=195, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 economical heating temperature"), Unit=195, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(195,0, "20"))
 		if 196 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 normal cooling temperature"), Unit=196, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 normal cooling temperature"), Unit=196, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(196, 0, "24"))
 		if 197 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 economical cooling temperature"), Unit=197, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 economical cooling temperature"), Unit=197, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(197, 0, "26"))
 		if 198 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 heating + at solar limit"), Unit=198, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 heating + at solar limit"), Unit=198, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(198, 0, "2"))
 		if 199 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 cooling - at solar limit"), Unit=199, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 cooling - at solar limit"), Unit=199, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(199, 0, "-2"))
 		if 200 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 heating + at external temperature dependent"), Unit=200, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 heating + at external temperature dependent"), Unit=200, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(200, 0, "1"))
 		if 201 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 11 cooling - at external temperature dependent"), Unit=201, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 11 cooling - at external temperature dependent"), Unit=201, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(201, 0, "-1"))
 		# Zone 12 | 12. zóna
 		if 202 not in Devices:
-			Domoticz.Device(Name=tl.t("Zone 12 normal heating temperature"), Unit=202, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("Zone 12 normal heating temperature"), Unit=202, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(202, 0, "22"))
 		if 203 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 economical heating temperature"), Unit=203, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 economical heating temperature"), Unit=203, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(203,0, "20"))
 		if 204 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 normal cooling temperature"), Unit=204, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 normal cooling temperature"), Unit=204, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(204, 0, "24"))
 		if 205 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 economical cooling temperature"), Unit=205, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 economical cooling temperature"), Unit=205, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "35", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(205, 0, "26"))
 		if 206 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 heating + at solar limit"), Unit=206, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 heating + at solar limit"), Unit=206, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(206, 0, "2"))
 		if 207 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 cooling - at solar limit"), Unit=207, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 cooling - at solar limit"), Unit=207, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(207, 0, "-2"))
 		if 208 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 heating + at external temperature dependent"), Unit=208, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 heating + at external temperature dependent"), Unit=208, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(208, 0, "1"))
 		if 209 not in Devices:
-			Domoticz.Device(Name= tl.t("Zone 12 cooling - at external temperature dependent"), Unit=209, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Zone 12 cooling - at external temperature dependent"), Unit=209, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(209, 0, "-1"))
 
 		if 65 not in Devices:
@@ -1572,34 +1586,34 @@ class BasePlugin:
 		
 		# Mixing valves | Keverőszelepek
 		if 61 not in Devices:
-			Domoticz.Device(Name= tl.t("1. mixing valve hysteresis"), Unit=61, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("1. mixing valve hysteresis"), Unit=61, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(61 ,0, "1"))
 		if 62 not in Devices:
-			Domoticz.Device(Name=tl.t("2. mixing valve hysteresis"), Unit=62, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name=tl.t("2. mixing valve hysteresis"), Unit=62, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(62 ,0, "1"))
 		if 59 not in Devices:
-			Domoticz.Device(Name= tl.t("1. mixing heating valve max. temperature"), Unit=59, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("1. mixing heating valve max. temperature"), Unit=59, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(59 ,0, "40"))
 		if 60 not in Devices:
-			Domoticz.Device(Name= tl.t("2. mixing heating valve max. temperature"), Unit=60, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("2. mixing heating valve max. temperature"), Unit=60, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(60 ,0, "40"))
 		if 70 not in Devices:
-			Domoticz.Device(Name= tl.t("1. mixing heating valve min. temperature"), Unit=70, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("1. mixing heating valve min. temperature"), Unit=70, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(70 ,0, "40"))
 		if 71 not in Devices:
-			Domoticz.Device(Name= tl.t("2. mixing heating valve min. temperature"), Unit=71, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("2. mixing heating valve min. temperature"), Unit=71, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(71 ,0, "40"))
 		if 119 not in Devices:
-			Domoticz.Device(Name= tl.t("1. mixing cooling valve max. temperature"), Unit=119, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("1. mixing cooling valve max. temperature"), Unit=119, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(119 ,0, "15"))
 		if 120 not in Devices:
-			Domoticz.Device(Name= tl.t("2. mixing cooling valve max. temperature"), Unit=120, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("2. mixing cooling valve max. temperature"), Unit=120, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(120 ,0, "15"))
 		if 121 not in Devices:
-			Domoticz.Device(Name= tl.t("1. mixing cooling valve min. temperature"), Unit=121, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("1. mixing cooling valve min. temperature"), Unit=121, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(121 ,0, "15"))
 		if 122 not in Devices:
-			Domoticz.Device(Name= tl.t("2. mixing cooling valve min. temperature"), Unit=122, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("2. mixing cooling valve min. temperature"), Unit=122, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "90", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(122 ,0, "15"))
 		if 72 not in Devices:
 			Domoticz.Device(Name= tl.t("1. mixing valve current target temperature"), Unit=72, TypeName="Temperature", Used=1).Create()
@@ -1614,10 +1628,10 @@ class BasePlugin:
 			Domoticz.Device(Name= tl.t("Future external temperature"), Unit=74, TypeName="Selector Switch", Switchtype=18, Image=15, Options=Options, Used=0).Create()
 			devicecreated.append(deviceparam(74, 0, "0"))
 		if 63 not in Devices:
-			Domoticz.Device(Name= tl.t("Mixing 1 valves dew point correction"), Unit=63, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Mixing 1 valves dew point correction"), Unit=63, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(63 ,0, "2"))
 		if 75 not in Devices:
-			Domoticz.Device(Name= tl.t("Mixing 2 valves dew point correction"), Unit=75, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Mixing 2 valves dew point correction"), Unit=75, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "10", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(75 ,0, "2"))
 		
 		
@@ -1636,37 +1650,37 @@ class BasePlugin:
 			Domoticz.Device(Name= tl.t("DHW target external switching limit"), Unit=83, TypeName="Selector Switch", Switchtype=18, Image=15, Options=Options, Used=0).Create()
 			devicecreated.append(deviceparam(83, 0, "0"))
 		if 90 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer heating temperature"), Unit=90, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer heating temperature"), Unit=90, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(90, 0, "40"))
 		if 91 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer cooling temperature"), Unit=91, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer cooling temperature"), Unit=91, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(91, 0, "15"))
 		if 92 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer heating hysteresis"), Unit=92, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer heating hysteresis"), Unit=92, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(92, 0, "3"))
 		if 123 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer cooling hysteresis"), Unit=123, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer cooling hysteresis"), Unit=123, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(123, 0, "3"))
 		if 82 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer target heating external temperature dependent"), Unit=82, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer target heating external temperature dependent"), Unit=82, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(82, 0, "45"))
 		if 77 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer external hysteresis"), Unit=77, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer external hysteresis"), Unit=77, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(77, 0, "0.5"))
 		if 95 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer heating 2nd device switching limit"), Unit=95, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer heating 2nd device switching limit"), Unit=95, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(95, 0, "7"))
 		if 226 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer cooling 2nd device switching limit"), Unit=226, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer cooling 2nd device switching limit"), Unit=226, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(226, 0, "27"))
 		if 94 not in Devices:
-			Domoticz.Device(Name= tl.t("Solar heating buffer temperature"), Unit=94, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Solar heating buffer temperature"), Unit=94, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(94, 0, "45"))
 		if 93 not in Devices:
-			Domoticz.Device(Name= tl.t("Solar cooling buffer temperature"), Unit=93, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Solar cooling buffer temperature"), Unit=93, Type=242, Subtype=1, Options={"ValueMin": "5", "ValueMax": "85", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(93, 0, "7"))
 		if 96 not in Devices:
-			Domoticz.Device(Name= tl.t("Solar buffer hysteresis"), Unit=96, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Solar buffer hysteresis"), Unit=96, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(96, 0, "1"))
 		if 104 not in Devices:
 			Options = {"LevelActions": "||",
@@ -1716,22 +1730,22 @@ class BasePlugin:
 			Domoticz.Device(Name="2 PE", Unit=107, Type=244, Subtype=73, Switchtype=0, Used=0).Create()
 			devicecreated.append(deviceparam(107, 0, "Off"))
 		if 108 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer 2. device switching temperature"), Unit=108, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer 2. device switching temperature"), Unit=108, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(108 ,0, "-5"))
 		if 109 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer dual temperature diff"), Unit=109, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer dual temperature diff"), Unit=109, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "15", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(109, 0, "2"))
 		if 110 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer device 1 external E cartridge switching limit"), Unit=110, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer device 1 external E cartridge switching limit"), Unit=110, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(110, 0, "15"))
 		if 111 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer device 2 external E cartridge switching limit"), Unit=111, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer device 2 external E cartridge switching limit"), Unit=111, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(111, 0, "15"))
 		if 117 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer device 1 tank E cartridge switching limit"), Unit=117, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer device 1 tank E cartridge switching limit"), Unit=117, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(117, 0, "45"))
 		if 118 not in Devices:
-			Domoticz.Device(Name= tl.t("Buffer device 2 tank E cartridge switching limit"), Unit=118, Type=242, Subtype=1, Used=1).Create()
+			Domoticz.Device(Name= tl.t("Buffer device 2 tank E cartridge switching limit"), Unit=118, Type=242, Subtype=1, Options={"ValueMin": "-40", "ValueMax": "50", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
 			devicecreated.append(deviceparam(118, 0, "45"))
 		if 84 not in Devices:
 			Options = {"LevelActions": "||",
@@ -1936,11 +1950,27 @@ class BasePlugin:
 			Domoticz.Device(Name= tl.t("Watt limit hysteresis"), Unit=85,  Type=243, Subtype=6, Used=1).Create()
 			devicecreated.append(deviceparam(85, 0, "5"))
 
-		# Available IDs: 87, 89, 156, 158, 159; maximum: 252 | Szabad azonosítók: 87, 89, 156, 158, 159; maximum: 252
+		# Plugin readiness status | Plugin készenléti állapota
+		if 87 not in Devices:
+			Domoticz.Device(Name="DSVT Plugin Status", Unit=87, Type=243, Subtype=22, Used=0).Create()
+			devicecreated.append(deviceparam(87, 0, "STARTING"))
+
+		if 89 not in Devices:
+			Domoticz.Device(Name=tl.t("Frost protection temperature limit"), Unit=89, Type=242, Subtype=1, Options={"ValueMin": "-10", "ValueMax": "15", "ValueStep": "0.5", "ValueUnit": "°C"}, Used=1).Create()
+			devicecreated.append(deviceparam(89, 0, "5"))
+
+		if 156 not in Devices:
+			Domoticz.Device(Name=tl.t("Frost protection hysteresis"), Unit=156, Type=242, Subtype=1, Options={"ValueMin": "0", "ValueMax": "5", "ValueStep": "0.1", "ValueUnit": "°C"}, Used=1).Create()
+			devicecreated.append(deviceparam(156, 0, "1"))
+
+		# Available IDs: 158, 159; maximum: 252 | Szabad azonosítók: 158, 159; maximum: 252
 
 		# If any devices were created in onStart(), update their default settings here | Ha az onStart() eszközt hozott létre, itt frissítjük az alapértelmezett beállításait
 		for device in devicecreated:
 			Devices[device.unit].Update(nValue=device.nvalue, sValue=device.svalue)
+
+		# Mark plugin as starting | Plugin indulásának jelzése
+		Devices[87].Update(nValue=0, sValue="STARTING")
 
 		# Create a list of sensors and switches | Lista készítése az érzékelőkről és kapcsolókról
 
@@ -2206,6 +2236,20 @@ class BasePlugin:
 
 		self.szoba_on = parse_L(Parameters["Mode1"])
 
+		self.FrostTempSensors = parse_FG_T(Parameters["Mode1"])
+
+		self.FrostSwitches = parse_FG_S(Parameters["Mode2"])
+
+		self.FrostLimit = float(Devices[89].sValue)
+
+		self.PumpProtectionSwitches = parse_SV_P(Parameters["Mode2"])
+
+		self.PumpProtectionDay = parse_SV_D(Parameters["Mode2"])
+
+		self.PumpProtectionHour = parse_SV_H(Parameters["Mode2"])
+
+		self.PumpProtectionMinutes = parse_SV_M(Parameters["Mode2"])
+
 		# Build temperature sensor state when handling timeouts | Hőmérséklet-érzékelő állapotának előállítása időtúllépések kezelésekor
 		for sensor in itertools.chain(self.Zone_TempSensors_1, self.Zone_TempSensors_2, self.Zone_TempSensors_3, self.Zone_TempSensors_4, self.Zone_TempSensors_5, self.Zone_TempSensors_6, self.KulsoTempSensors):
 			self.ActiveSensors[sensor] = True
@@ -2240,7 +2284,7 @@ class BasePlugin:
 			self.nextupdate = datetime.now()
 			self.onHeartbeat()
 		
-		if Unit in (1, 2, 12, 13, 22, 29, 58, 32, 83, 84, 88, 65, 66, 74, 78, 98, 99, 101, 104, 124, 125, 126, 130, 4, 38, 42, 46, 50, 54, 8, 40, 44, 48, 52, 56, 128, 127, 129, 40, 57, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 210, 211, 212, 218, 219, 220, 224, 232) :
+		if Unit in (1, 2, 12, 13, 22, 29, 58, 32, 83, 84, 88, 65, 66, 74, 78, 89, 98, 99, 101, 104, 124, 125, 126, 130, 4, 38, 42, 46, 50, 54, 8, 40, 44, 48, 52, 56, 128, 127, 129, 40, 57, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 210, 211, 212, 218, 219, 220, 224, 232) :
 			Domoticz.Debug(f"Unit change detected: {Unit} | Egységváltozás észlelve: {Unit}")
 			Domoticz.Debug("Unit changed; calling self.parameter_change | Egységváltozás; a self.parameter_change hívása")
 			self.nextcalc = datetime.now()
@@ -2263,6 +2307,8 @@ class BasePlugin:
 		self.puffertemperror = False
 		self.device_1_solar_dhw_on = False
 		self.device_2_solar_dhw_on = False
+		self.FrostLimit = float(Devices[89].sValue)
+		self.FrostHysteresis = float(Devices[156].sValue)
 		
 		if Devices[88].sValue == "10" :
 			self.heating_colling = True
@@ -2903,6 +2949,14 @@ class BasePlugin:
 			Devices[75].Update(nValue=Devices[75].nValue, sValue=Devices[75].sValue, Used=0)
 			Devices[120].Update(nValue=Devices[120].nValue, sValue=Devices[120].sValue, Used=0)
 			Devices[122].Update(nValue=Devices[122].nValue, sValue=Devices[122].sValue, Used=0)
+
+		if self.FrostTempSensors :
+			Devices[89].Update(nValue=Devices[89].nValue, sValue=Devices[89].sValue, Used=1)
+			Devices[156].Update(nValue=Devices[156].nValue, sValue=Devices[156].sValue, Used=1)
+		else :
+			Devices[89].Update(nValue=Devices[89].nValue, sValue=Devices[89].sValue, Used=0)
+			Devices[156].Update(nValue=Devices[156].nValue, sValue=Devices[156].sValue, Used=0)
+			
 		
 		if Devices[78].sValue == "0" :
 			self.solar_dhw_limit = 0
@@ -3476,6 +3530,7 @@ class BasePlugin:
 		if (Devices[1].Used == 1 and Devices[1].sValue != "0") and Devices[210].sValue != "0" :  # Dashboard enabled and heating/cooling enabled | Kezdőlapi megjelenítés és fűtés–hűtés bekapcsolva
 
 			Domoticz.Debug("Home screen ON, heating ON: add favorites | Kezdőlapon bekapcsolva, fűtés bekapcsolva: kedvencek hozzáadása")
+
 
 			self.addfavorite(Devices[64].ID)
 			self.removefavorite(Devices[216].ID)
@@ -4594,6 +4649,13 @@ class BasePlugin:
 			self.removefavorite(Devices[235].ID)
 			self.removefavorite(Devices[236].ID)
 
+		if self.FrostTempSensors :
+				self.addfavorite(Devices[89].ID)
+				self.addfavorite(Devices[156].ID)
+		else :
+			self.removefavorite(Devices[89].ID)
+			self.removefavorite(Devices[156].ID)
+
 		self.applyfavorites()
 		
 		saveUserVar(self)
@@ -4633,11 +4695,10 @@ class BasePlugin:
 
 	def onHeartbeat(self):
 
-		self.switchJelenlet()
-
 		self.sync_zone_console_and_setpoints()
 
 		now = time.time()
+
 
 		Domoticz.Debug(f"Delayed actions snapshot: {self.delayedActions} | Késleltetett műveletek pillanatképe: {self.delayedActions}")
 
@@ -4696,12 +4757,17 @@ class BasePlugin:
 
 			self.switchcreated.clear()
 			self.statuscreated.clear()
+
+			self.pump_protection()
+
 			self.f1works = False
 			self.h1works = False
 			self.p1works = False
 			self.f2works = False
 			self.h2works = False
 			self.p2works = False
+
+			self.frost_protection()
 
 			if self.dhw and Devices[13].sValue != "0" and (Devices[13].Used == 1):
 				
@@ -6629,6 +6695,11 @@ class BasePlugin:
 			Domoticz.Debug("No update yet; next scheduled update: {0} | Még nem esedékes a frissítés; következő ütemezett frissítés: {0}".format(self.nextupdate))
 
 
+		# Mark plugin ready after a successful heartbeat | Plugin készenlétének jelzése sikeres heartbeat után
+		if Devices[87].sValue != "READY":
+			Devices[87].Update(nValue=0, sValue="READY")
+
+
 	def readTemps(self):
 
 		Domoticz.Debug(('Starting temperature data collection' + " | " + ("Indul a hőmérséklet adatok gyüjtése")))
@@ -6643,6 +6714,8 @@ class BasePlugin:
 		list_kevero_1 = []
 		list_kevero_2 = []
 		listszoba = []
+		listfrosttemps = []
+		self.FrostTemp = None
 
 		# Zone temperature and dew-point lists in a separate dictionary | Zónák hőmérséklet- és harmatpontlistái külön szótárban
 		zone_temps = {z: [] for z in range(1, 13)}
@@ -6709,6 +6782,21 @@ class BasePlugin:
 						if not self.SensorTimedOut(idx, device["Name"], device["LastUpdate"]):
 							list_kevero_2.append(device["Temp"])
 							device["HaveTimeout"] = False
+						else:
+							device["HaveTimeout"] = True
+
+				# Frost protection sensors | Fagyvédelmi hőmérők
+				if idx in self.FrostTempSensors:
+					if "Temp" in device:
+						Domoticz.Debug(f'Frost protection: {device["idx"]}-{device["Name"]} = {device["Temp"]} | Fagyvédelem: {device["idx"]}-{device["Name"]} = {device["Temp"]}')
+						if not self.SensorTimedOut(idx, device["Name"], device["LastUpdate"]):
+							try:
+								temp = float(device["Temp"])
+								if math.isfinite(temp):
+									listfrosttemps.append(temp)
+									device["HaveTimeout"] = False
+							except (TypeError, ValueError):
+								Domoticz.Error(f'Invalid frost temperature: idx={idx} | Érvénytelen fagyvédelmi hőmérséklet: idx={idx}')
 						else:
 							device["HaveTimeout"] = True
 
@@ -6908,6 +6996,13 @@ class BasePlugin:
 			self.outtemp = 0.0
 
 		Devices[69].Update(nValue=0, sValue=str(self.outtemp), TimedOut=False)
+
+		# Calculate average frost protection temperature | Fagyvédelmi átlaghőmérséklet meghatározása
+		if listfrosttemps:
+			self.FrostTemp = round(sum(listfrosttemps) / len(listfrosttemps), 1)
+			Domoticz.Debug(f'Frost protection average temperature: {self.FrostTemp}°C | Fagyvédelmi átlaghőmérséklet: {self.FrostTemp}°C')
+		else:
+			self.FrostTemp = None
 
 		# Calculate mean tank temperature | Átlagos tartályhőmérséklet kiszámítása
 		Domoticz.Debug("Tank temperature list: {0} | Tartályhőmérsékletek listája: {0}".format(listtartalytemps))
@@ -7916,8 +8011,6 @@ class BasePlugin:
 
 		p1_meter_actual = self.aktual_watt + int(self.Internals['power_dhw_consumption'])
 
-		self.disinfection()
-		
 		fM = []
 		fH = []
 		power = []
@@ -8024,6 +8117,9 @@ class BasePlugin:
 			self.M_celhomerseklet = self.tartaly_max
 
 		self.M_hiszterezis = min(fH)
+
+		self.disinfection()
+
 		Devices[21].Update(nValue=0, sValue=str(self.M_celhomerseklet), TimedOut=False)
 		self.Internals['power_dhw_consumption'] = max(power)
 		saveUserVar(self)
@@ -8147,33 +8243,67 @@ class BasePlugin:
 		
 		Domoticz.Debug("DHW timer end, self.dhw_time_run: {0} | HMV-időzítő vége, self.dhw_time_run: {0}".format(self.dhw_time_run))
 
-	
-	def disinfection(self) :
 
-		if current_day_of_week() in self.Tank_1_N :
-			Domoticz.Debug(('Today is the scheduled day for device 1 | ' + "Ez az 1 eszkoz aktualis nap"))
-			if self.Tank_1_O <= datetime.now().hour < (self.Tank_1_O + 6) % 24:
-				Domoticz.Debug(('Device 1: current hour is past the start hour but no more than 6 hours later | ' + "Tobb mint az ora 1 eszkoz de meg nem tobb mint + 6"))
-				self.M_celhomerseklet = float(Devices[76].sValue)
-				Devices[21].Update(nValue=0, sValue=str(self.M_celhomerseklet), TimedOut=False)
-				self.dhw_1()
-			else :
-				Domoticz.Debug(('Device 1: disinfection time has not arrived or has already passed | ' + "1 eszkoz meg nincs itt az ideje a fertotlenitesnek vagy mar elmult"))
-		else :
-			Domoticz.Debug(('Device 1: no disinfection required today | ' + "A mai napon 1 eszkoz nem kell fertotleniteni"))
 
-		if current_day_of_week() in self.Tank_2_N :
-			Domoticz.Debug(('Today is the scheduled day for device 2 | ' + "Ez az 2 eszkoz aktualis nap"))
-			if self.Tank_2_O <= datetime.now().hour < (self.Tank_2_O + 6) % 24:
-				Domoticz.Debug(('Device 2: current hour is past the start hour but no more than 6 hours later | ' + "Tobb mint az ora 2 eszkoz de meg nem tobb mint + 6"))
-				self.M_celhomerseklet = float(Devices[76].sValue)
-				Devices[21].Update(nValue=0, sValue=str(self.M_celhomerseklet), TimedOut=False)
-				self.dhw_2()
-			else :
-				Domoticz.Debug(('Device 2: disinfection time has not arrived or has already passed | ' + "2 eszkoz meg nincs itt az ideje a fertotlenitesnek vagy mar elmult"))
+	def disinfection(self):
 
-		else :
-			Domoticz.Debug(('Device 2: no disinfection required today | ' + "A mai napon 2 eszkoz nem kell fertotleniteni"))
+		now = datetime.now()
+		today = now.isoweekday()
+		yesterday = 7 if today == 1 else today - 1
+
+		# Disinfection schedule diagnostics | Fertőtlenítési időzítés diagnosztikája
+		Domoticz.Debug(f"[DISINFECTION] START: now={now}, today={today}, yesterday={yesterday}, Tank_1_N={self.Tank_1_N}, Tank_1_O={self.Tank_1_O}, Tank_2_N={self.Tank_2_N}, Tank_2_O={self.Tank_2_O}, complete={self.disinfection_complete} | [FERTŐTLENÍTÉS] INDULÁS: idő={now}, nap={today}, előző_nap={yesterday}, 1_napok={self.Tank_1_N}, 1_óra={self.Tank_1_O}, 2_napok={self.Tank_2_N}, 2_óra={self.Tank_2_O}, teljesítve={self.disinfection_complete}")
+
+		# Check primary disinfection schedule | Elsődleges fertőtlenítési időzítés ellenőrzése
+		start_1 = now.replace(hour=int(self.Tank_1_O), minute=0, second=0, microsecond=0)
+		active_1 = ((today in self.Tank_1_N and start_1 <= now < start_1 + timedelta(hours=6)) or (yesterday in self.Tank_1_N and start_1 - timedelta(days=1) <= now < start_1 - timedelta(days=1) + timedelta(hours=6)))
+
+		# Check secondary disinfection schedule | Másodlagos fertőtlenítési időzítés ellenőrzése
+		start_2 = now.replace(hour=int(self.Tank_2_O), minute=0, second=0, microsecond=0)
+		active_2 = ((today in self.Tank_2_N and start_2 <= now < start_2 + timedelta(hours=6)) or (yesterday in self.Tank_2_N and start_2 - timedelta(days=1) <= now < start_2 - timedelta(days=1) + timedelta(hours=6)))
+
+		# Log calculated disinfection windows | Számított fertőtlenítési időablakok naplózása
+		Domoticz.Debug(f"[DISINFECTION] WINDOWS: active_1={active_1}, start_1={start_1}, active_2={active_2}, start_2={start_2} | [FERTŐTLENÍTÉS] IDŐABLAKOK: aktív_1={active_1}, kezdés_1={start_1}, aktív_2={active_2}, kezdés_2={start_2}")
+
+		# Reset completion outside the scheduled window | Teljesítés törlése az időablakon kívül
+		if not active_1 and not active_2:
+			self.disinfection_complete = False
+			Domoticz.Debug("[DISINFECTION] STOP: outside both time windows, resetting completion | [FERTŐTLENÍTÉS] LEÁLLÁS: mindkét időablakon kívül, teljesítés törölve")
+			return
+
+		# Do not repeat completed disinfection | Teljesített fertőtlenítés ismétlésének tiltása
+		if self.disinfection_complete:
+			Domoticz.Debug("[DISINFECTION] STOP: disinfection already completed | [FERTŐTLENÍTÉS] LEÁLLÁS: fertőtlenítés már teljesítve")
+			return
+
+		target = float(Devices[76].sValue)
+		tank_temp = float(self.TartalyAktual)
+
+		# Log current tank and target temperatures | Aktuális tartály- és célhőmérséklet naplózása
+		Domoticz.Debug(f"[DISINFECTION] TEMPERATURE: tank={tank_temp}, target={target}, reached={tank_temp >= target} | [FERTŐTLENÍTÉS] HŐMÉRSÉKLET: tartály={tank_temp}, cél={target}, elérte={tank_temp >= target}")
+
+		# Mark disinfection complete when target is reached | Fertőtlenítés teljesítése a célhőmérséklet elérésekor
+		if tank_temp >= target:
+			self.disinfection_complete = True
+			Domoticz.Debug("[DISINFECTION] COMPLETE: tank reached target temperature | [FERTŐTLENÍTÉS] TELJESÍTVE: a tartály elérte a célhőmérsékletet")
+			return
+
+		# Device 1 disinfection | 1. eszköz fertőtlenítése
+		if active_1:
+			Domoticz.Debug("[DISINFECTION] DEVICE 1: active, setting target and calling dhw_1() | [FERTŐTLENÍTÉS] 1. ESZKÖZ: aktív, célhőmérséklet beállítása és dhw_1() hívása")
+			self.M_celhomerseklet = target
+		else:
+			Domoticz.Debug("[DISINFECTION] DEVICE 1: no active disinfection period | [FERTŐTLENÍTÉS] 1. ESZKÖZ: nincs aktív fertőtlenítési időszak")
+
+		# Device 2 disinfection | 2. eszköz fertőtlenítése
+		if active_2:
+			Domoticz.Debug("[DISINFECTION] DEVICE 2: active, setting target and calling dhw_2() | [FERTŐTLENÍTÉS] 2. ESZKÖZ: aktív, célhőmérséklet beállítása és dhw_2() hívása")
+			self.M_celhomerseklet = target
+		else:
+			Domoticz.Debug("[DISINFECTION] DEVICE 2: no active disinfection period | [FERTŐTLENÍTÉS] 2. ESZKÖZ: nincs aktív fertőtlenítési időszak")
+
+		# Disinfection function finished | Fertőtlenítési függvény befejeződött
+		Domoticz.Debug(f"[DISINFECTION] END: complete={self.disinfection_complete}, DHW_target={self.M_celhomerseklet} | [FERTŐTLENÍTÉS] VÉGE: teljesítve={self.disinfection_complete}, HMV_cél={self.M_celhomerseklet}")
 
 
 	def buffer_1(self) :
@@ -8331,7 +8461,11 @@ class BasePlugin:
 
 		if self.TartalyAktual < self.M_celhomerseklet - self.M_hiszterezis :
 			Domoticz.Debug(('Below target minus hysteresis: switch on primary DHW source | ' + "Hidegeb mint a cél - hiszterezis a hmv elsődleges bekapcsolás!"))
-			if self.outtemp < out_set - hiszt and self.Elsodleges_E :
+			if self.TartalyAktual > float(Devices[115].sValue) and self.Elsodleges_E :
+				Domoticz.Debug(('Below target; one device required, DHW E available and tank temperature above limit: switch E on | ' + "Hidegeb mint a cél - 1 eszkoz kell, van hmv E es tartaly melegebb mint a limit E bekapcs"))
+				self.switchElsodleges_E(True)
+				self.switchElsodleges_M(False)
+			elif self.outtemp < out_set - hiszt and self.Elsodleges_E :
 				Domoticz.Debug(('Below target; one device required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hidegeb mint a cél - 1 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
 				self.switchElsodleges_E(True)
 				self.switchElsodleges_M(False)
@@ -8340,10 +8474,6 @@ class BasePlugin:
 				self.switchElsodleges_E(False)
 				self.dhw_timer()
 				self.switchElsodleges_M(True)
-			elif self.TartalyAktual > float(Devices[115].sValue) and self.Elsodleges_E :
-				Domoticz.Debug(('Below target; one device required, DHW E available and tank temperature above limit: switch E on | ' + "Hidegeb mint a cél - 1 eszkoz kell, van hmv E es tartaly melegebb mint a limit E bekapcs"))
-				self.switchElsodleges_E(True)
-				self.switchElsodleges_M(False)
 			else :
 				Domoticz.Debug(('Below target; one device required, DHW E unavailable or outside its threshold | ' + "Hidegeb mint a cél - 1 eszkoz kell hatarertek, nincs vagy hataron kivul hmv E"))
 				self.switchElsodleges_E(False)
@@ -8354,7 +8484,11 @@ class BasePlugin:
 		
 		elif self.TartalyLast and self.TartalyAktual <= self.M_celhomerseklet :
 			Domoticz.Debug(('Within hysteresis band and DHW heating: switch on primary source | ' + "Hiszterezis belül de nem hűl azaz hmv felfűtés, elsődleges bekapcsolás!"))
-			if self.outtemp < out_set - hiszt and self.Elsodleges_E :
+			if self.TartalyAktual > float(Devices[115].sValue) and self.Elsodleges_E :
+				Domoticz.Debug(('Within hysteresis band; one device required, DHW E available and tank temperature above limit: switch E on | ' + "Hiszterezis belül - 1 eszkoz kell, van hmv E es tartaly melegebb mint a limit E bekapcs"))
+				self.switchElsodleges_E(True)
+				self.switchElsodleges_M(False)
+			elif self.outtemp < out_set - hiszt and self.Elsodleges_E :
 				Domoticz.Debug(('Within hysteresis band; one device required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hiszterezis belül - 1 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
 				self.switchElsodleges_E(True)
 				self.switchElsodleges_M(False)
@@ -8363,10 +8497,7 @@ class BasePlugin:
 				self.switchElsodleges_E(False)
 				self.dhw_timer()
 				self.switchElsodleges_M(True)
-			elif self.TartalyAktual > float(Devices[115].sValue) and self.Elsodleges_E :
-				Domoticz.Debug(('Within hysteresis band; one device required, DHW E available and tank temperature above limit: switch E on | ' + "Hiszterezis belül - 1 eszkoz kell, van hmv E es tartaly melegebb mint a limit E bekapcs"))
-				self.switchElsodleges_E(True)
-				self.switchElsodleges_M(False)
+			
 			else :
 				Domoticz.Debug(('Within hysteresis band; one device required during heating, DHW E unavailable or outside its threshold | ' + "Hiszterezis belül - 1 eszkoz kell, felfutes, nincs vagy hataron kivul hmv E"))
 				self.switchElsodleges_E(False)
@@ -8414,6 +8545,10 @@ class BasePlugin:
 
 		if self.TartalyAktual < self.M_celhomerseklet - self.M_hiszterezis :
 			Domoticz.Debug(('Below target minus hysteresis: switch on secondary DHW source | ' + "Hidegeb mint a cél - hiszterezis a hmv Masodlagos bekapcsolás!"))
+			if self.TartalyAktual > float(Devices[116].sValue) and self.Masodlagos_E :
+				Domoticz.Debug(('Below target; two devices required, DHW E available and tank temperature above limit: switch E on | ' + "Hidegeb mint a cél - 2 eszkoz kell, van hmv E és tartaly melegebb mint a limit E bekapcs"))
+				self.switchMasodlagos_E(True)
+				self.switchMasodlagos_M(False)
 			if self.outtemp < out_set - hiszt and self.Masodlagos_E :
 
 				Domoticz.Debug(("Before condition: outdoor temperature compared with the setpoint minus hysteresis | " + ("FELTETEL ELOTT: "+str(self.outtemp)+" < "+str(out_set-hiszt)+" = "+str(self.outtemp < out_set - hiszt))))
@@ -8425,10 +8560,6 @@ class BasePlugin:
 				Domoticz.Debug(('Below target; outside temperature above threshold plus hysteresis: switch E off | ' + "Hidegeb mint a cél - Kint melegebb van mint a határ + hiszterézis, E kikapcs"))
 				self.switchMasodlagos_E(False)
 				self.switchMasodlagos_M(True)
-			elif self.TartalyAktual > float(Devices[116].sValue) and self.Masodlagos_E :
-				Domoticz.Debug(('Below target; two devices required, DHW E available and tank temperature above limit: switch E on | ' + "Hidegeb mint a cél - 2 eszkoz kell, van hmv E és tartaly melegebb mint a limit E bekapcs"))
-				self.switchMasodlagos_E(True)
-				self.switchMasodlagos_M(False)
 			else :
 				Domoticz.Debug(('Below target; two devices required, DHW E unavailable or outside its threshold | ' + "Hidegeb mint a cél - 2 eszkoz kell hatarertek, nincs vagy hataron kivul hmv E"))
 				self.switchMasodlagos_E(False)
@@ -8438,7 +8569,11 @@ class BasePlugin:
 
 		elif self.TartalyLast and self.TartalyAktual <= self.M_celhomerseklet :
 			Domoticz.Debug(('Within hysteresis band and DHW heating: switch on secondary source | ' + "Hiszterezis belül de nem hűl azaz hmv felfűtés, masodlagos bekapcsolás!"))
-			if self.outtemp < out_set - hiszt and self.Masodlagos_E :
+			if self.TartalyAktual > float(Devices[116].sValue) and self.Masodlagos_E :
+				Domoticz.Debug(('Within hysteresis band; two devices required, DHW E available and tank temperature above limit: switch E on | ' + "Hiszterezis belül - 2 eszkoz kell, van hmv E és tartaly melegebb mint a limit E bekapcs"))
+				self.switchMasodlagos_E(True)
+				self.switchMasodlagos_M(False)
+			elif self.outtemp < out_set - hiszt and self.Masodlagos_E :
 				Domoticz.Debug(('Within hysteresis band; two devices required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hiszterezis belül - 2 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
 				self.switchMasodlagos_E(True)
 				self.switchMasodlagos_M(False)
@@ -8446,10 +8581,6 @@ class BasePlugin:
 				Domoticz.Debug(('Within hysteresis band; outside temperature above threshold plus hysteresis: switch E off | ' + "Hiszterezis belül - Kint melegebb van mint a határ + hiszterézis, E kikapcs"))
 				self.switchMasodlagos_E(False)
 				self.switchMasodlagos_M(True)
-			elif self.TartalyAktual > float(Devices[116].sValue) and self.Masodlagos_E :
-				Domoticz.Debug(('Within hysteresis band; two devices required, DHW E available and tank temperature above limit: switch E on | ' + "Hiszterezis belül - 2 eszkoz kell, van hmv E és tartaly melegebb mint a limit E bekapcs"))
-				self.switchMasodlagos_E(True)
-				self.switchMasodlagos_M(False)
 			else :
 				Domoticz.Debug(('Within hysteresis band; two devices required during heating, DHW E unavailable or outside its threshold | ' + "Hiszterezis belül - 2 eszkoz kell, felfutes, nincs vagy hataron kivul hmv E"))
 				self.switchMasodlagos_E(False)
@@ -11775,6 +11906,80 @@ class BasePlugin:
 			for idx in getattr(self, f'Zone_{zone}_H'):
 				self.switchappend(idx, command)
 
+	def frost_protection(self):
+
+		# Frost protection | Fagyvédelem
+		if not self.FrostTempSensors or not self.FrostSwitches:
+			return
+
+		# No valid temperature | Nincs érvényes hőmérséklet
+		if self.FrostTemp is None:
+			return
+
+		limit = self.FrostLimit
+		hysteresis = max(0.0, self.FrostHysteresis)
+
+		# Hysteresis control | Hiszterézises szabályozás
+		if self.FrostTemp <= limit:
+			self.FrostActive = True
+		elif self.FrostTemp >= limit + hysteresis:
+			self.FrostActive = False
+
+		# Add switch requests | Kapcsolási igények hozzáadása
+		command = "On" if self.FrostActive else "Off"
+
+		for idx in self.FrostSwitches:
+			self.switchappend(idx, command)
+
+		Domoticz.Debug(
+			f"Frost protection: temp={self.FrostTemp:.1f}°C, "
+			f"limit={limit:.1f}°C, hysteresis={hysteresis:.1f}°C, "
+			f"command={command} | "
+			f"Fagyvédelem: hőmérséklet={self.FrostTemp:.1f}°C, "
+			f"határ={limit:.1f}°C, hiszterézis={hysteresis:.1f}°C, "
+			f"parancs={command}"
+		)
+
+	def pump_protection(self):
+
+		# Periodic pump protection | Időszakos szivattyúvédelem
+		if not self.PumpProtectionSwitches:
+			return
+
+		if self.PumpProtectionDay is None or self.PumpProtectionHour is None or self.PumpProtectionMinutes is None:
+			return
+
+		now = datetime.now()
+		now_ts = now.timestamp()
+
+		# Calculate scheduled start for the current week | Az aktuális heti tervezett indítás kiszámítása
+		start_date = (now - timedelta(days=now.weekday())).date() + timedelta(days=self.PumpProtectionDay)
+		start = datetime.combine(start_date, datetime.min.time()).replace(hour=self.PumpProtectionHour).timestamp()
+
+		# Read saved run expiry timestamp | Mentett járatási lejárat beolvasása
+		run = float(self.Internals.get("pump_protection_run", 0) or 0)
+
+		# Start once within the one-hour window | Egyszeri indítás az egyórás időablakban
+		if start <= now_ts < start + 3600 and run < start:
+
+			run = now_ts + self.PumpProtectionMinutes * 60
+
+			self.Internals["pump_protection_run"] = run
+			saveUserVar(self)
+
+			Domoticz.Log(
+				f"Pump protection started: duration={self.PumpProtectionMinutes} min | "
+				f"Szivattyúvédelem elindult: időtartam={self.PumpProtectionMinutes} perc"
+			)
+
+		# Determine switch command | Kapcsolási parancs meghatározása
+		command = "On" if start <= run and now_ts < run else "Off"
+
+		# Append switch commands with ON priority | Kapcsolási parancsok hozzáadása ON prioritással
+		for idx in self.PumpProtectionSwitches:
+			self.switchappend(idx, command)
+
+		#Domoticz.Debug(f"Pump protection: command={command}, run={run}, now={now_ts} | " f"Szivattyúvédelem: parancs={command}, lejárat={run}, most={now_ts}")
 
 	def switchappend(self,idx,command):
 
@@ -12184,20 +12389,26 @@ class BasePlugin:
 
 		trv_id = str(trv_id)
 
+		if not isinstance(self.AktualTemp, dict) or not isinstance(self.AktualTemp.get("result"), list):
+			return None
+
 		for dev in self.AktualTemp["result"]:
 
-			dev_id  = str(dev.get("ID", ""))
+			dev_id = str(dev.get("ID", ""))
 
 			# Match by ID | ID szerinti egyezés
 			if dev_id == trv_id:
 				try:
 					temp_val = float(dev.get("Temp"))
-					return temp_val
-				except Exception as e:
+					if math.isfinite(temp_val):
+						return temp_val
+					return None
+				except (TypeError, ValueError) as e:
 					Domoticz.Debug(f"[TRV] Temperature parsing error (ID={dev_id}): {e} | [TRV] Hőmérséklet-feldolgozási hiba (ID={dev_id}): {e}")
-					return 22.0
+					return None
 
-		return 22.0
+		return None
+
 
 	def get_AC_zone_var(self, zone: int, fh_mode: str = "F"):
 
@@ -12205,31 +12416,69 @@ class BasePlugin:
 		default_attr = f"AC_{zone}_{fh_mode}"
 		target_attr = f"Z_{zone}_AC_{fh_mode}"
 
-		variables = DomoticzAPI("type=command&param=getuservariables")
-		valuestring = ""
-		novar = True
+		# Reuse cached variables for 5 seconds | Gyorsítótárazott változók használata 5 másodpercig
+		now = time.monotonic()
 
-		if variables and "result" in variables:
-			for variable in variables["result"]:
-				if variable["Name"] == varname:
-					valuestring = variable["Value"]
-					novar = False
-					break
+		if now >= self._ac_variables_cache_until:
+			variables = DomoticzAPI("type=command&param=getuservariables")
 
-		if novar:
-			DomoticzAPI(
-				f"type=command&param=adduservariable&vname={varname}&vtype=2&vvalue={json.dumps(getattr(self, default_attr))}"
+			if variables is not None and isinstance(variables.get("result"), list):
+				self._ac_variables_cache = {
+					variable["Name"]: variable.get("Value", "")
+					for variable in variables["result"]
+					if isinstance(variable, dict) and "Name" in variable
+				}
+			else:
+				# API failure does not mean the variable is missing | Az API-hiba nem jelenti a változó hiányát
+				self._ac_variables_cache = None
+				Domoticz.Error(
+					f"Cannot read AC variables for {varname} | "
+					f"Nem olvashatók a(z) {varname} klímaváltozói"
+				)
+
+			self._ac_variables_cache_until = time.monotonic() + 5.0
+
+		# Preserve current settings on API failure | API-hiba esetén a jelenlegi beállítások megőrzése
+		if self._ac_variables_cache is None:
+			return getattr(self, target_attr)
+
+		if varname not in self._ac_variables_cache:
+			# Create missing variable only after successful reading | Hiányzó változó létrehozása csak sikeres lekérdezés után
+			default_value = getattr(self, default_attr).copy()
+
+			result = DomoticzAPI(
+				f"type=command&param=adduservariable&vname={varname}&vtype=2&vvalue={json.dumps(default_value)}"
+			)
+
+			if result is not None:
+				self._ac_variables_cache[varname] = json.dumps(default_value)
+			else:
+				self._ac_variables_cache = None
+				self._ac_variables_cache_until = time.monotonic() + 5.0
+				Domoticz.Error(
+					f"Cannot create AC variable {varname} | "
+					f"Nem hozható létre a(z) {varname} klímaváltozó"
+				)
+				return getattr(self, target_attr)
+
+			setattr(self, target_attr, default_value)
+			return getattr(self, target_attr)
+
+		try:
+			stored = json.loads(self._ac_variables_cache[varname])
+			if not isinstance(stored, dict):
+				raise ValueError("AC variable must contain a JSON object")
+
+			base = getattr(self, default_attr).copy()
+			base.update(stored)
+			setattr(self, target_attr, base)
+
+		except (ValueError, TypeError) as e:
+			Domoticz.Debug(
+				f"Invalid JSON in user variable {varname}: {e} | "
+				f"Hibás JSON a(z) {varname} felhasználói változóban: {e}"
 			)
 			setattr(self, target_attr, getattr(self, default_attr).copy())
-		else:
-			try:
-				stored = json.loads(valuestring)
-				base = getattr(self, default_attr).copy()
-				base.update(stored)
-				setattr(self, target_attr, base)
-			except Exception as e:
-				Domoticz.Debug(f"Invalid JSON in user variable {varname}: {e} | Hibás JSON a(z) {varname} uservariable-ben: {e}")
-				setattr(self, target_attr, getattr(self, default_attr).copy())
 
 		return getattr(self, target_attr)
 
@@ -12390,7 +12639,6 @@ class BasePlugin:
 		self._fav_actions.clear()
 
 
-
 	def WeatherForecastAPI(self):
 
 		WeatherForecast = self.met_data_string if self.met_data_string else None
@@ -12475,6 +12723,10 @@ def onStart():
 
 
 def onStop():
+	# Mark plugin as stopping | Plugin leállításának jelzése
+	if 87 in Devices and Devices[87].sValue != "STOPPING":
+		Devices[87].Update(nValue=0, sValue="STOPPING")
+	
 	global _plugin
 	_plugin.onStop()
 
@@ -13672,6 +13924,50 @@ def parse_C_12(strCSV):
 
 	return listvalsparams
 
+def parse_FG_T(strCSV):
+
+	pattern = r'(?:^|,)FG_T:(\d+)(?=,|$)'
+
+	return list(map(int, re.findall(pattern, strCSV)))
+
+
+def parse_FG_S(strCSV):
+
+	pattern = r'(?:^|,)FG_S:(\d+)(?=,|$)'
+
+	return list(map(int, re.findall(pattern, strCSV)))
+
+
+def parse_SV_P(strCSV):
+
+	pattern = r'(?:^|,)SV_P:(\d+)(?=,|$)'
+
+	return list(map(int, re.findall(pattern, strCSV)))
+
+
+def parse_SV_D(strCSV):
+
+	pattern = r'(?:^|,)SV_D:(\d+)(?=,|$)'
+	values = re.findall(pattern, strCSV)
+
+	return int(values[0]) if values and 0 <= int(values[0]) <= 6 else None
+
+
+def parse_SV_H(strCSV):
+
+	pattern = r'(?:^|,)SV_H:(\d+)(?=,|$)'
+	values = re.findall(pattern, strCSV)
+
+	return int(values[0]) if values and 0 <= int(values[0]) <= 23 else None
+
+
+def parse_SV_M(strCSV):
+
+	pattern = r'(?:^|,)SV_M:(\d+)(?=,|$)'
+	values = re.findall(pattern, strCSV)
+
+	return int(values[0]) if values and 1 <= int(values[0]) <= 20 else None
+
 def DomoticzAPI(APICall):
 
 	resultJson = None
@@ -13685,7 +13981,7 @@ def DomoticzAPI(APICall):
 			encoded_credentials = base64.b64encode(credentials.encode('ascii'))
 			req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode("ascii"))
 		
-		response = request.urlopen(req)
+		response = request.urlopen(req, timeout=5)
 		if response.status == 200:
 			resultJson = json.loads(response.read().decode('utf-8'))
 			if resultJson["status"] != "OK":
@@ -13695,8 +13991,12 @@ def DomoticzAPI(APICall):
 		else:
 			Domoticz.Error('Domoticz API: http error = {0} | Domoticz API: HTTP-hiba = {0}'.format(response.status))
 		response.close()
-	except:
-		Domoticz.Error("Error calling '{0}' | Hiba a következő cím hívásakor: '{0}'".format(url))
+	except Exception as e:
+		# Log the actual API error | A tényleges API-hiba naplózása
+		Domoticz.Error(
+			f"Error calling '{url}': {type(e).__name__}: {e} | "
+			f"Hiba a következő cím hívásakor: '{url}': {type(e).__name__}: {e}"
+		)
 	return resultJson
 
 # Generic helper functions | Általános segédfüggvények

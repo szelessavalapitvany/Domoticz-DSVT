@@ -283,5 +283,7 @@
 	"Virtual hydraulic shifter": "Virtual hydraulic shifter",
 	"Active– zone": "Aktiivinen– Vyöhyke",
 	"TRV target temperature diff": "TRV tavoite lämpötila diff",
-	"Watt limit hysteresis": "Watt raja hystereesi"
+	"Watt limit hysteresis": "Watt raja hystereesi",
+	"Frost protection temperature limit": "Pakkassuojauksen lämpötilaraja",
+	"Frost protection hysteresis": "Pakkassuojauksen hystereesi"
 }

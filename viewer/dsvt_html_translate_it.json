@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Tempo di attesa della richiesta scaduto",
     "({idx}) Exception: {error}": "({idx}) Eccezione: {error}",
     "All setpoints updated": "Tutte le temperature impostate sono state aggiornate",
-    "Update complete, reloading page...": "Aggiornamento completato, ricaricamento della pagina..."
+    "Update complete, reloading page...": "Aggiornamento completato, ricaricamento della pagina...",
+    "Frost protection thermometers": "Sensori di temperatura antigelo",
+    "Frost protection devices": "Dispositivi di protezione antigelo",
+    "➕ Add switch": "➕ Aggiungi interruttore",
+    "Pump protection devices": "Valvole e pompe da proteggere",
+    "➕ Add pump switch": "➕ Aggiungi interruttore della pompa",
+    "Day of week": "Giorno di attivazione",
+    "Start hour": "Ora di avvio",
+    "Running time (minutes)": "Durata di funzionamento (minuti)",
+    "Device 1 DHW disinfection": "Disinfezione ACS – dispositivo 1",
+    "Device 2 DHW disinfection": "Disinfezione ACS – dispositivo 2",
+    "Day": "Giorno",
+    "Hour": "Ora",
+    "Off": "Disattivato"
 }

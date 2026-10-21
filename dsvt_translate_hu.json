@@ -283,5 +283,7 @@
 	"Virtual hydraulic shifter": "Virtuális hidraulikus váltó",
 	"Active– zone": "Aktív zóna:",
 	"TRV target temperature diff": "TRV célhőmérséklet-különbség",
-	"Watt limit hysteresis": "Watt-limit hiszterézis"
+	"Watt limit hysteresis": "Watt-limit hiszterézis",
+	"Frost protection temperature limit": "Fagyvédelmi hőmérséklet-határérték",
+	"Frost protection hysteresis": "Fagyvédelmi hiszterézis"
 }

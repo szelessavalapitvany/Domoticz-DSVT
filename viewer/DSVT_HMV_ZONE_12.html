@@ -236,10 +236,21 @@
 		.select-normal {
 			width:50px !important;
 			font-size: 9pt !important;
+			background-color: #fff;
+			padding: 3px;
+			border: 1px solid #ccc;
 		}
 		.select-120 {
 			width:120px !important;
 			font-size: 9pt !important;
+			background-color: #fff;
+			padding: 3px;
+			border: 1px solid #ccc;
+		}
+		select {
+			background-color: #fff;
+			padding: 3px;
+			border: 1px solid #ccc;
 		}
 		.input-12 {
 			width: 12ch;
@@ -273,6 +284,44 @@
 		if (typeof window.translationLoader === 'undefined') {
 		window.translationLoader = new TranslationLoader();
 	}
+	// Verify plugin hardware by Extra, then read its Unit 87 status device | A plugin hardverének ellenőrzése Extra alapján, majd a 87-es Unit állapoteszközének olvasása
+	async function getDsvtPluginStatus(hardwareId) {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 5000);
+		try {
+			const hardwareResponse = await fetch(`${window.location.origin}/json.htm?type=command&param=gethardware`, {signal: controller.signal, cache: 'no-store'});
+			if (!hardwareResponse.ok) throw new Error(`Hardware HTTP ${hardwareResponse.status}`);
+			const hardwareData = await hardwareResponse.json();
+			const hardwares = Array.isArray(hardwareData.result) ? hardwareData.result : [];
+			const matchingHardware = hardwares.filter(hw => hw.Extra === 'DSVT_HMV_ZONE_12' && String(hw.idx) === String(hardwareId));
+			if (matchingHardware.length !== 1) {
+				console.warn('DSVT hardware not found by Extra and hardware ID | DSVT hardver nem található Extra és hardverazonosító alapján:', hardwareId);
+				return null;
+			}
+			const deviceResponse = await fetch(`${window.location.origin}/json.htm?type=command&param=getdevices&filter=all&used=all`, {signal: controller.signal, cache: 'no-store'});
+			if (!deviceResponse.ok) throw new Error(`Devices HTTP ${deviceResponse.status}`);
+			const deviceData = await deviceResponse.json();
+			const devices = Array.isArray(deviceData.result) ? deviceData.result : [];
+			const matches = devices.filter(device => String(device.HardwareID) === String(hardwareId) && Number(device.Unit) === 87);
+			if (matches.length !== 1) {
+				console.warn('Plugin status device not found uniquely | Nem található egyértelműen a plugin állapoteszköze:', {hardwareId, matches: matches.length});
+				return null;
+			}
+			return String(matches[0].Data ?? matches[0].sValue ?? '').trim();
+		} catch (error) {
+			console.warn('Plugin status request failed | Pluginállapot lekérése sikertelen:', error);
+			return null;
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+
+	async function isDsvtReady(hardwareId) {
+		if (await getDsvtPluginStatus(hardwareId) !== 'READY') return false;
+		await new Promise(resolve => setTimeout(resolve, 2000));
+		return await getDsvtPluginStatus(hardwareId) === 'READY';
+	}
+
 	function showSaveStatus() {
 		document.getElementById("saveStatus").style.display = "block";
 		console.log('Showing save status | Mentési állapot megjelenítése');
@@ -298,7 +347,7 @@
 		console.log('Hiding save status | Mentési állapot elrejtése');
 	}
 
-	Promise.resolve(window.translationLoader.loaded).then(() => {
+	Promise.resolve(window.translationLoader.loaded).then(async () => {
 		function download(filename, text) {
 			var element = document.createElement('a');
 			element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
@@ -313,13 +362,13 @@
 		}
 
 		var dayname = [
-			translationLoader.t("Monday") + ":0",
-			translationLoader.t("Tuesday") + ":1",
-			translationLoader.t("Wednesday") + ":2",
-			translationLoader.t("Thursday") + ":3",
-			translationLoader.t("Friday") + ":4",
-			translationLoader.t("Saturday") + ":5",
-			translationLoader.t("Sunday") + ":6"
+			translationLoader.t("Monday") + ":1",
+			translationLoader.t("Tuesday") + ":2",
+			translationLoader.t("Wednesday") + ":3",
+			translationLoader.t("Thursday") + ":4",
+			translationLoader.t("Friday") + ":5",
+			translationLoader.t("Saturday") + ":6",
+			translationLoader.t("Sunday") + ":7"
 		];
 
 		var hourname = [
@@ -340,7 +389,8 @@
 			"14:14",
 			"15:15",
 			"16:16",
-			"18:16",
+			"17:17",
+			"18:18",
 			"19:19",
 			"20:20",
 			"21:21",
@@ -782,7 +832,7 @@
 				series: series
 			});
 		}
-		var dsvt=getThermostats();
+		var dsvt=await getThermostats();
 		var askJSON = getRequestPelsodleges("thermostatHistory");
 		if(askJSON != undefined) {
 			var th = dsvt.filter((t) => t.name == askJSON);
@@ -984,40 +1034,33 @@
 					}
 				});
 
-				let modeRaw = dsvt[i] && typeof dsvt[i][mode] === 'string' ? dsvt[i][mode] : '';
-				let modeItems = modeRaw
-					.split(',')
-					.map(s => s.trim())
-					.filter(s => modePrefix === '' || s.startsWith(modePrefix + ':'))
-					.map(s => modePrefix === '' ? s : s.substring(modePrefix.length + 1));
-
-				let ids = [];
-
-				modeItems.forEach(idx => {
-
-					let found = dsvt[i].aktname.find(entry => {
-						let parts = entry.split(':');
-						return parts[2] == idx;
-					});
-
-					if (found) {
-
-						let parts = found.split(':');
-
-						let unit  = parts[0];
-						let label = parts[1];
-						let id    = parts[2];
-
-						let chip = createChip(unit, label, id, dropZone, hiddenInput, datasetKey, false);
-
-						dropZone.appendChild(chip);
-						ids.push(id);
+				// Restore saved IDs from the correct source | Mentett azonosítók visszaolvasása a megfelelő forrásból
+				const modeRaw = typeof dsvt[i]?.[mode] === 'string' ? dsvt[i][mode] : '';
+				const savedItems = modeRaw.split(',').map(item => item.trim()).filter(Boolean);
+				const sourceEntries = (modePrefix === 'N' || modePrefix === 'O') ? [] : (Array.isArray(dsvt[i][forparam]) ? dsvt[i][forparam] : []);
+				const sourceById = new Map(sourceEntries.map(entry => { const parts = String(entry).split(':'); return [parts[2], {unit:parts[0], label:parts[1], id:parts[2]}]; }));
+				const ids = [];
+				savedItems.forEach(item => {
+					const separator = item.indexOf(':');
+					if (separator < 0) return;
+					const prefix = item.slice(0, separator);
+					const id = item.slice(separator + 1);
+					// Accept legacy L switch entries when migrating to LS | Régi L kapcsolók elfogadása LS-re áttéréskor
+					if (prefix !== modePrefix && !(modePrefix === 'LS' && prefix === 'L')) return;
+					let entry;
+					if (modePrefix === 'N' || modePrefix === 'O') {
+						const option = Array.from(chooserBox.querySelectorAll('.device')).find(dev => dev.dataset.id === id);
+						if (!option) return;
+						entry = {unit:'', label:option.dataset.label, id};
+					} else {
+						entry = sourceById.get(id);
+						if (!entry) return;
 					}
+					if (ids.includes(id)) return;
+					const chip = createChip(entry.unit, entry.label, id, dropZone, hiddenInput, datasetKey, false);
+					dropZone.appendChild(chip);
+					ids.push(id);
 				});
-
-				dropZone.dataset[datasetKey] = ids.join(',');
-				hiddenInput.value = ids.join(',');
-
 				dropZone.dataset[datasetKey] = ids.join(',');
 				hiddenInput.value = ids.join(',');
 			}
@@ -1054,6 +1097,44 @@
 				return chip;
 			}
 
+			// Disinfection day/hour selectors without Domoticz device IDs | Fertőtlenítési nap/óra legördülők Domoticz IDX nélkül
+			function createDisinfectionSchedule(deviceNo, modeKey, container) {
+				const saved = String(dsvt[i][modeKey] || '').split(',').map(value => value.trim());
+				const storedDays = saved.filter(value => /^N:[1-7]$/.test(value)).map(value => value.substring(2));
+				const storedHour = saved.find(value => /^O:(?:[0-9]|1[0-9]|2[0-3])$/.test(value));
+				const wrapper = document.createElement('div');
+				wrapper.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:12px 0;';
+				const heading = document.createElement('span');
+				heading.className = 'paramname';
+				heading.textContent = translationLoader.t(`Device ${deviceNo} DHW disinfection`);
+				wrapper.appendChild(heading);
+				const dayLabel = document.createElement('label');
+				dayLabel.textContent = translationLoader.t('Day') + ': ';
+				const daySelect = document.createElement('select');
+				daySelect.id = `disinfection_day_${deviceNo}_${i}`;
+				daySelect.className = 'select-120';
+				const none = document.createElement('option');
+				none.value = '';
+				none.textContent = translationLoader.t('Off');
+				daySelect.appendChild(none);
+				dayname.forEach(entry => { const [label, number] = entry.split(':'); const option = document.createElement('option'); option.value = number; option.textContent = label; daySelect.appendChild(option); });
+				daySelect.value = storedDays[0] || '';
+				dayLabel.appendChild(daySelect);
+				wrapper.appendChild(dayLabel);
+				const hourLabel = document.createElement('label');
+				hourLabel.textContent = translationLoader.t('Hour') + ': ';
+				const hourSelect = document.createElement('select');
+				hourSelect.id = `disinfection_hour_${deviceNo}_${i}`;
+				hourSelect.className = 'select-120';
+				for (let hour = 0; hour < 24; hour++) { const option = document.createElement('option'); option.value = String(hour); option.textContent = String(hour).padStart(2, '0') + ':00'; hourSelect.appendChild(option); }
+				hourSelect.value = storedHour ? storedHour.substring(2) : '0';
+				hourSelect.disabled = !daySelect.value;
+				daySelect.addEventListener('change', () => { hourSelect.disabled = !daySelect.value; });
+				hourLabel.appendChild(hourSelect);
+				wrapper.appendChild(hourLabel);
+				container.appendChild(wrapper);
+			}
+
 			const dropBlockConfigs = [];
 
 			// Device 1 | 1. eszköz
@@ -1067,13 +1148,12 @@
 				{ title: "Device 1: Buffer heater cartridge switch", link: "➕ Add a buffer heater switch", modePrefix: 'PE', targetId: 'pcartridge_switch_1', datasetKey: 'pe1', inputName: 'pcartridge_switch_id_1' },
 				{ title: "Device 1: On delay", link: "➕ Add on delay switch", modePrefix: 'BK', targetId: 'before_switch_1', datasetKey: 'bk1', inputName: 'before_switch_id_1' },
 				{ title: "Device 1: Off delay", link: "➕ Add off delay switch", modePrefix: 'UK', targetId: 'after_switch_1', datasetKey: 'uk1', inputName: 'after_switch_id_1' },
-				{ title: "Device 1 DHW disinfection day", link: "➕ Add day", modePrefix: 'N', targetId: 'day_switch_1', datasetKey: 'n1', inputName: 'day_switch_id_1', forparam: 'dayname' },
-				{ title: "Device 1 DHW disinfection hour", link: "➕ Add hour", modePrefix: 'O', targetId: 'hour_switch_1', datasetKey: 'o1', inputName: 'hour_switch_id_1', forparam: 'hourname' },
 				
 			].forEach(cfg => {
 				dropBlockConfigs.push({ mode: 'Mode4', forparam: cfg.forparam || 'switchnameakt', ...cfg });
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), device1Block);
 			});
+			createDisinfectionSchedule(1, 'Mode4', device1Block);
 
 			// Device 2 | 2. eszköz
 			[
@@ -1086,12 +1166,11 @@
 				{ title: "Device 2: Buffer heater cartridge switch", link: "➕ Add a buffer heater switch", modePrefix: 'PE', targetId: 'pcartridge_switch_2', datasetKey: 'pe2', inputName: 'pcartridge_switch_id_2' },
 				{ title: "Device 2: On delay", link: "➕ Add on delay switch", modePrefix: 'BK', targetId: 'before_switch_2', datasetKey: 'bk2', inputName: 'before_switch_id_2' },
 				{ title: "Device 2: Off delay", link: "➕ Add off delay switch", modePrefix: 'UK', targetId: 'after_switch_2', datasetKey: 'uk2', inputName: 'after_switch_id_2' },
-				{ title: "Device 2 DHW disinfection day", link: "➕ Add day", modePrefix: 'N', targetId: 'day_switch_2', datasetKey: 'n2', inputName: 'day_switch_id_2', forparam: 'dayname' },
-				{ title: "Device 2 DHW disinfection hour", link: "➕ Add hour", modePrefix: 'O', targetId: 'hour_switch_2', datasetKey: 'o2', inputName: 'hour_switch_id_2', forparam: 'hourname' },
 			].forEach(cfg => {
 				dropBlockConfigs.push({ mode: 'Mode5', forparam: cfg.forparam || 'switchnameakt', ...cfg });
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), device2Block);
 			});
+			createDisinfectionSchedule(2, 'Mode5', device2Block);
 
 			// Outdoor, mixing valve, room, DHW and buffer temperature sensors | Külső, keverőszelep-, szoba-, HMV- és pufferhőmérők
 			[
@@ -1099,7 +1178,7 @@
 				{ title: "DHW tank thermometer|s|", link: "➕ Add thermometer", modePrefix: 'T', targetId: 'hmv_temp', datasetKey: 't', inputName: 'hmv_temp_id', forparam: 'tempnameakt' },
 				{ title: "Buffer tank thermometer|s|", link: "➕ Add thermometer", modePrefix: 'P', targetId: 'puffer_temp', datasetKey: 'p', inputName: 'puffer_temp_id', forparam: 'tempnameakt' },
 				{ title: "Room compensation thermometers", link: "➕ Add thermometer", modePrefix: 'L', targetId: 'room_temp', datasetKey: 'l', inputName: 'room_temp_id', forparam: 'tempnameakt' },
-				{ title: "Room compensation switch on", link: "➕ Add plus switch", modePrefix: 'L', targetId: 'room_pluss', datasetKey: 'l', inputName: 'room_pluss_id', forparam: 'switchnameakt' },
+				{ title: "Room compensation switch on", link: "➕ Add plus switch", modePrefix: 'LS', targetId: 'room_pluss', datasetKey: 'l', inputName: 'room_pluss_id', forparam: 'switchnameakt' },
 				{ title: "1. mixing thermometer|s|", link: "➕ Add thermometer", modePrefix: 'S_1', targetId: 'valve_1_temp', datasetKey: 's_1', inputName: 'valve_1_temp_id', forparam: 'tempnameakt' },
 				{ title: "2. mixing thermometer|s|", link: "➕ Add thermometer", modePrefix: 'S_2', targetId: 'valve_2_temp', datasetKey: 's_2', inputName: 'valve_2_temp_id', forparam: 'tempnameakt' },
 			].forEach(cfg => {
@@ -1124,6 +1203,61 @@
 				dropBlockConfigs.push({ mode: 'Mode3', forparam: cfg.forparam || 'switchnameakt', ...cfg });
 				createDropBlock(dsvt, i, dropBlockConfigs.at(-1), valveBlock);
 			});
+
+			// Frost protection sensors and switches | Fagyvédelmi hőmérők és kapcsolók
+			// Mode1 / FG_T: thermometer IDs; Mode2 / FG_S: switch IDs
+			// Mode1 / FG_T: hőmérő idx-ek; Mode2 / FG_S: kapcsoló idx-ek
+			[
+				{ mode: 'Mode1', title: "Frost protection thermometers", link: "➕ Add thermometer", modePrefix: 'FG_T', targetId: 'frost_temp', datasetKey: 'fg_t', inputName: 'frost_temp_id', forparam: 'tempnameakt' },
+				{ mode: 'Mode2', title: "Frost protection devices", link: "➕ Add switch", modePrefix: 'FG_S', targetId: 'frost_switch', datasetKey: 'fg_s', inputName: 'frost_switch_id', forparam: 'switchnameakt' }
+			].forEach(cfg => {
+				dropBlockConfigs.push(cfg);
+				createDropBlock(dsvt, i, cfg, valveBlock);
+			});
+
+			// Pump exercise / anti-seize configuration | Szivattyújáratás / letapadás elleni védelem
+			// All flags are stored in Mode2 | Minden flag a Mode2 mezőben tárolódik
+			const pumpConfig = {
+				mode: 'Mode2', title: 'Pump protection devices', link: '➕ Add pump switch',
+				modePrefix: 'SV_P', targetId: 'pump_protection', datasetKey: 'sv_p',
+				inputName: 'pump_protection_id', forparam: 'switchnameakt'
+			};
+			dropBlockConfigs.push(pumpConfig);
+			createDropBlock(dsvt, i, pumpConfig, valveBlock);
+
+			const pumpSchedule = document.createElement('div');
+			pumpSchedule.style.cssText = 'padding: 10px 3px 15px; display:flex; flex-wrap:wrap; align-items:center; gap:12px;';
+			const savedMode2 = String(dsvt[i].Mode2 || '');
+			function storedPumpValue(flag, fallback) {
+				const match = savedMode2.split(',').map(v => v.trim()).find(v => v.startsWith(flag + ':'));
+				return match ? match.slice(flag.length + 1) : String(fallback);
+			}
+			function pumpSelect(flag, caption, options, fallback) {
+				const label = document.createElement('label');
+				label.textContent = translationLoader.t(caption) + ': ';
+				label.style.cssText = 'font-weight:bold; color:#000;';
+				const select = document.createElement('select');
+				select.id = `${flag}_${i}`;
+				select.dataset.pumpFlag = flag;
+				select.style.cssText = 'margin-left:6px; min-width:85px;';
+				options.forEach(([value, text]) => {
+					const option = document.createElement('option');
+					option.value = String(value);
+					option.textContent = String(text);
+					select.appendChild(option);
+				});
+				select.value = storedPumpValue(flag, fallback);
+				if (select.selectedIndex < 0) select.value = String(fallback);
+				label.appendChild(select);
+				pumpSchedule.appendChild(label);
+			}
+			pumpSelect('SV_D', 'Day of week', [
+				['0','Monday'], ['1','Tuesday'], ['2','Wednesday'], ['3','Thursday'],
+				['4','Friday'], ['5','Saturday'], ['6','Sunday']
+			].map(([v, day]) => [v, translationLoader.t(day)]), '0');
+			pumpSelect('SV_H', 'Start hour', Array.from({length:24}, (_, hour) => [hour, String(hour).padStart(2,'0') + ':00']), '3');
+			pumpSelect('SV_M', 'Running time (minutes)', Array.from({length:20}, (_, n) => [n+1, String(n+1)]), '5');
+			valveBlock.appendChild(pumpSchedule);
 
 			// Mode 6 settings | Mode6 beállítások
 
@@ -1923,11 +2057,50 @@
 		submitButton.classList.add('save-data');
 		submitButton.setAttribute('value', translationLoader.t("Save"));
 		submitButton.setAttribute('id', 'submitBtn_' + i);
-		cell2.appendChild(submitButton);
+		submitButton.disabled = true;
+		submitButton.title = 'Waiting for DSVT Plugin Status: READY | Várakozás a DSVT Plugin Status: READY állapotra';
+		// Show spinner instead of Save until the plugin is ready | A Mentés gomb helyett forgó jelző látszik, amíg a plugin nem kész
+		const saveControls = document.createElement('div');
+		saveControls.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;margin-bottom:50px;min-height:36px;';
+		submitButton.style.float = 'none';
+		submitButton.style.marginBottom = '0';
+		submitButton.style.display = 'none';
+		cell2.appendChild(saveControls);
+		saveControls.appendChild(submitButton);
+		const readySpinner = document.createElement('span');
+		readySpinner.id = 'readySpinner_' + i;
+		readySpinner.style.cssText = 'display:inline-block;width:24px;height:24px;margin:4px 18px;border:3px solid #ccc;border-top-color:#00759f;border-radius:50%;animation:spin 1s linear infinite;';
+		readySpinner.title = 'Waiting for plugin readiness | Várakozás a plugin készenlétére';
+		saveControls.appendChild(readySpinner);
+
+		// Capture the hardware ID before asynchronous retries | Hardverazonosító rögzítése az aszinkron újrapróbálkozások előtt
+		const statusHardwareId = dsvt[i].id;
+		// Retry until two successive READY checks succeed | Ismétlés két egymást követő READY válaszig
+		async function enableSaveWhenReady() {
+			if (await isDsvtReady(statusHardwareId)) {
+				submitButton.disabled = false;
+				submitButton.title = '';
+				readySpinner.style.display = 'none';
+				submitButton.style.display = '';
+			} else {
+				setTimeout(enableSaveWhenReady, 2000);
+			}
+		}
+		void enableSaveWhenReady();
 
 		document.getElementById('submitBtn_' + i).addEventListener('click', (function (i_copy) {
 
 			return async function () {
+				const currentSaveButton = document.getElementById('submitBtn_' + i_copy);
+				if (currentSaveButton.disabled) return;
+				currentSaveButton.disabled = true;
+				currentSaveButton.style.display = 'none';
+				readySpinner.style.display = 'inline-block';
+				if (!await isDsvtReady(dsvt[i_copy].id)) {
+					console.warn('Save blocked: plugin not READY | Mentés tiltva: a plugin nincs READY állapotban');
+					setTimeout(() => location.reload(), 2000);
+					return;
+				}
 				let mode1List = [], mode2List = [], mode3List = [], mode4List = [], mode5List = [];
 				let setpointUpdates = [];
 				let data = {
@@ -1955,6 +2128,21 @@
 							case 'Mode5': mode5List.push(item); break;
 						}
 					});
+				});
+
+				// Save selected disinfection day and hour to Mode4/Mode5 | Fertőtlenítési nap és óra mentése Mode4/Mode5 mezőbe
+				for (const deviceNo of [1, 2]) {
+					const day = document.getElementById(`disinfection_day_${deviceNo}_${i_copy}`)?.value;
+					const hour = document.getElementById(`disinfection_hour_${deviceNo}_${i_copy}`)?.value;
+					if (!day) continue;
+					const items = deviceNo === 1 ? mode4List : mode5List;
+					items.push(`N:${day}`, `O:${hour || '0'}`);
+				}
+
+				// Persist schedule flags alongside pump device flags in Mode2 | Időzítési flag-ek mentése a Mode2 mezőbe
+				['SV_D', 'SV_H', 'SV_M'].forEach(flag => {
+					const select = document.getElementById(`${flag}_${i_copy}`);
+					if (select) mode2List.push(`${flag}:${select.value}`);
 				});
 
 				for (let z = 1; z <= 12; z++) {
@@ -2060,6 +2248,7 @@
 				// Do not restart the plugin when nothing was changed | Változatlan konfiguráció esetén ne indítsuk újra a plugint
 				if (!hardwareChanged && climateUpdates.length === 0 && setpointUpdates.length === 0) {
 					console.log('No configuration changes | Nincs konfigurációs változás');
+					currentSaveButton.disabled = false;
 					return;
 				}
 
@@ -2106,7 +2295,13 @@
 					});
 					const logBox = document.getElementById('logOutput');
 					if (logBox) logBox.appendChild(closeButton);
+					if (await isDsvtReady(dsvt[i_copy].id)) {
 					saveButton.disabled = false;
+					saveButton.style.display = '';
+					readySpinner.style.display = 'none';
+				} else {
+					void enableSaveWhenReady();
+				}
 				}
 
 			};

@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) 请求超时",
     "({idx}) Exception: {error}": "({idx}) 异常：{error}",
     "All setpoints updated": "所有目标温度已更新",
-    "Update complete, reloading page...": "更新完成，正在重新加载页面..."
+    "Update complete, reloading page...": "更新完成，正在重新加载页面...",
+    "Frost protection thermometers": "防冻温度传感器",
+    "Frost protection devices": "防冻保护设备",
+    "➕ Add switch": "➕ 添加开关",
+    "Pump protection devices": "需要保护的阀门和水泵",
+    "➕ Add pump switch": "➕ 添加水泵开关",
+    "Day of week": "启动星期",
+    "Start hour": "启动小时",
+    "Running time (minutes)": "运行时间（分钟）",
+    "Device 1 DHW disinfection": "设备1 生活热水消毒",
+    "Device 2 DHW disinfection": "设备2 生活热水消毒",
+    "Day": "星期",
+    "Hour": "小时",
+    "Off": "关闭"
 }

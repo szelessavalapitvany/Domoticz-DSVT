@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Anmodningen fik timeout",
     "({idx}) Exception: {error}": "({idx}) Undtagelse: {error}",
     "All setpoints updated": "Alle temperaturindstillinger er opdateret",
-    "Update complete, reloading page...": "Opdatering fuldført, siden genindlæses..."
+    "Update complete, reloading page...": "Opdatering fuldført, siden genindlæses...",
+    "Frost protection thermometers": "Frostsikringstermometre",
+    "Frost protection devices": "Frostsikringsenheder",
+    "➕ Add switch": "➕ Tilføj kontakt",
+    "Pump protection devices": "Ventiler og pumper, der skal beskyttes",
+    "➕ Add pump switch": "➕ Tilføj pumpekontakt",
+    "Day of week": "Aktiveringsdag",
+    "Start hour": "Starttime",
+    "Running time (minutes)": "Driftstid (minutter)",
+    "Device 1 DHW disinfection": "Desinfektion af varmt brugsvand – enhed 1",
+    "Device 2 DHW disinfection": "Desinfektion af varmt brugsvand – enhed 2",
+    "Day": "Dag",
+    "Hour": "Time",
+    "Off": "Fra"
 }

@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Délai d’attente de la requête dépassé",
     "({idx}) Exception: {error}": "({idx}) Exception : {error}",
     "All setpoints updated": "Toutes les températures de consigne ont été mises à jour",
-    "Update complete, reloading page...": "Mise à jour terminée, rechargement de la page..."
+    "Update complete, reloading page...": "Mise à jour terminée, rechargement de la page...",
+    "Frost protection thermometers": "Sondes de température antigel",
+    "Frost protection devices": "Dispositifs de protection antigel",
+    "➕ Add switch": "➕ Ajouter un interrupteur",
+    "Pump protection devices": "Vannes et pompes à protéger",
+    "➕ Add pump switch": "➕ Ajouter un interrupteur de pompe",
+    "Day of week": "Jour de déclenchement",
+    "Start hour": "Heure de démarrage",
+    "Running time (minutes)": "Durée de fonctionnement (minutes)",
+    "Device 1 DHW disinfection": "Désinfection de l’eau chaude sanitaire – appareil 1",
+    "Device 2 DHW disinfection": "Désinfection de l’eau chaude sanitaire – appareil 2",
+    "Day": "Jour",
+    "Hour": "Heure",
+    "Off": "Désactivé"
 }

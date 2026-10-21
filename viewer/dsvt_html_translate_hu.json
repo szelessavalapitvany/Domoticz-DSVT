@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) A kérés túllépte az időkorlátot",
     "({idx}) Exception: {error}": "({idx}) Kivétel: {error}",
     "All setpoints updated": "Minden célhőmérséklet frissítve.",
-    "Update complete, reloading page...": "Frissítés kész, az oldal újratöltése..."
+    "Update complete, reloading page...": "Frissítés kész, az oldal újratöltése...",
+    "Frost protection thermometers": "Fagyvédelmi hőmérő|k|",
+    "Frost protection devices": "Fagyvédelmi eszközö|k|",
+    "➕ Add switch": "➕ Kapcsoló hozzáadása",
+    "Pump protection devices": "Védendő szelep|ek| és szivattyú|k|",
+    "➕ Add pump switch": "➕ Szivattyúkapcsoló hozzáadása",
+    "Day of week": "Kapcsolás napja",
+    "Start hour": "Indítás órája",
+    "Running time (minutes)": "Működési idő (perc)",
+    "Device 1 DHW disinfection": "1. eszköz HMV fertőtlenítés",
+    "Device 2 DHW disinfection": "2. eszköz HMV fertőtlenítés",
+    "Day": "Nap",
+    "Hour": "Óra",
+    "Off": "Kikapcsolva"
 }

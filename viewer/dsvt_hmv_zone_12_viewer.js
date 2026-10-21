@@ -114,928 +114,197 @@ function getRequestPelsodleges(name){
 	return undefined;
 }
 
-function getThermostats() {
-	nodata = true;
-	var request=proto+address + ":" + port.toString() + hardwareReq;
-	var thermostats = [];
-	$.ajax({url: request,
-		async: false,
-		success: function(result){
-			for(i=0;i<result.result.length;i++) {
-				if(result.result[i].Extra == "DSVT_HMV_ZONE_12" && result.result[i].Enabled == "true") {
-					nodata = false;
-					var regExpF = /(F:|,|^)(\d+)/g;
-					var regExpM = /(M:)(\d+)/g;
-					var regExpH = /(H:)(\d+)/g;
-					var thermostat = new DSVT_HMV_ZONE_12_Thermostat();
-					var name = result.result[i].Name;
-					thermostat.name = name;
-					thermostat.id = result.result[i].idx;
-					var minDate = 0;
-					var innerRequest = proto + address + ":" + port.toString() + devicesReq;
-					$.ajax({
-						url: innerRequest,
-						async: false,
-						success: function (resultMode) {
-							thermostat.host = result.result[i].Address
-							thermostat.uname = result.result[i].Username
-							thermostat.pass = result.result[i].Password
-							thermostat.port = result.result[i].Port
-							thermostat.Mode1 = result.result[i].Mode1;
-							thermostat.Mode2 = result.result[i].Mode2;
-							thermostat.Mode3 = result.result[i].Mode3;
-							thermostat.Mode4 = result.result[i].Mode4;
-							thermostat.Mode5 = result.result[i].Mode5;
-							thermostat.Mode6 = result.result[i].Mode6;
-							//console.log(thermostat.Mode1);
-							//console.log(thermostat.Mode2);
-							//console.log(thermostat.Mode3);
-							//console.log(thermostat.Mode4);
-							//console.log(thermostat.Mode5);
-							//console.log(thermostat.Mode6);
-						}
-					});
-					thermostat.dayname = [
-						"Monday:0",
-						"Tuesday:1",
-						"Wednesday:2",
-						"Thursday:3",
-						"Friday:4",
-						"Saturday:5",
-						"Sunday:6"
-					];
-
-					const elemek = (thermostat.Mode1 || "").split(",");
-
-					for (let i = 0; i < elemek.length; i++) {
-						const [kulcs, ertek] = (elemek[i] || "").split(":");
-						if (kulcs.startsWith("Z_")) {
-							const infoUrl = proto + address + ":" + port.toString() + "type=command&param=getdevices&rid=" + ertek;
-
-							$.ajax({
-								url: infoUrl,
-								async: false,
-								success: function(info) {
-									if (!info || !info.result || !info.result[0]) return;
-
-									// Eszköznév normalizálása (ékezetek nélkül, kisbetűvel, szóköz helyett _)
-									const nev = info.result[0].Name
-										.normalize("NFD")
-										.replace(/[\u0300-\u036f]/g, "")
-										.replace(/\s+/g, "_")
-										.toLowerCase();
-
-									const tempUrl = proto + address + ":" + port.toString() + tempReq + ertek;
-
-									$.ajax({
-										url: tempUrl,
-										async: false,
-										success: function(resultZoneTemp) {
-											if (!resultZoneTemp || !Array.isArray(resultZoneTemp.result)) return;
-
-											const prop = "zonetemp_" + kulcs + "_" + nev;
-											thermostat[prop] = resultZoneTemp.result; // közvetlenül a thermostat-hoz
-
-											// mint a többi listaelem
-											if (!Array.isArray(thermostat.zonetemp)) thermostat.zonetemp = [];
-											thermostat.zonetemp.push(ertek + ":" + nev);
-
-											//console.log(kulcs, "→ idx:", ertek, "→ nev:", nev);
-										}
-									});
-								}
-							});
-						}
-					}
-
-
-					request = proto + address + ":" + port.toString() + devicesReq;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultAktName) {
-							thermostat.aktname = []; 
-							resultAktName.result.forEach(function (item) {
-								thermostat.aktname.push(item.Unit + ':' + item.Name + ':' + item.idx);
-							});
-							//console.log(resultAktName);
-							//console.log(thermostat.aktname);
-						}
-					});
-					request = proto + address + ":" + port.toString() + tempName;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultTempName) {
-							thermostat.tempnameakt = []; 
-							resultTempName.result.forEach(function (item) {
-								if (
-									item.Type.toLowerCase().includes('temp') &&
-									item.Used === 1 &&
-									(
-										item.HardwareName.toLowerCase().includes('dummy') ||
-										item.HardwareName.toLowerCase().includes('zigbee')
-									)
-								) {
-									thermostat.tempnameakt.push(item.Unit + ':' + item.Name + ':' + item.idx);
-								}
-							});
-							//console.log(resultTempName);
-							//console.log(thermostat.tempnameakt);
-						}
-					});
-					request = proto + address + ":" + port.toString() + switchName;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultswitchName) {
-							thermostat.switchnameakt = [];
-							resultswitchName.result.forEach(function (item) {
-								if (
-										item.SwitchType &&
-										item.SwitchType.toLowerCase().includes('on/off') &&
-										item.Used == 1
-								) {
-									thermostat.switchnameakt.push(item.Unit + ':' + item.Name + ':' + item.idx);
-								}
-							});
-							//console.log(resultswitchName);
-							//console.log(thermostat.switchnameakt);
-						}
-					});
-					request = proto + address + ":" + port.toString() + devicesReq;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultSetPointhName) {
-							thermostat.setpointnameakt = [];
-							resultSetPointhName.result.forEach(function (item) {
-								if (
-									item.SubType.toLowerCase().includes('setpoint') &&
-									thermostat.id == item.HardwareID
-								) {
-									thermostat.setpointnameakt.push(item.Unit + ':' + item.Name + ':' + item.idx + ':' + item.SetPoint);
-								}
-							});
-							//console.log(resultSetPointhName);
-							//console.log(thermostat.setpointnameakt);
-						}
-					});
-					request = proto + address + ":" + port.toString() + devicesReq;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultConsoleName) {
-							thermostat.consolenameakt = [];
-							resultConsoleName.result.forEach(function (item) {
-								if (
-									item.Type.toLowerCase().includes('Thermostat') &&
-									thermostat.id != item.HardwareID
-								) {
-									thermostat.consolenameakt.push(item.Unit + ':' + item.Name + ':' + item.idx + ':' + item.SetPoint);
-								}
-							});
-							//console.log(resultConsoleName);
-							//console.log(thermostat.consolenameakt);
-						}
-					});
-					request = proto + address + ":" + port.toString() + devicesReq;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultTRVName) {
-							thermostat.trvnameakt = [];
-							resultTRVName.result.forEach(function (item) {
-								if (
-									item.SubType &&
-										item.SubType.toLowerCase().includes('setpoint') &&
-										item.HardwareName &&
-										item.HardwareName.toLowerCase().includes('zigbee')
-								) {
-									thermostat.trvnameakt.push(item.Unit + ':' + item.Name + ':' + item.idx);
-								}
-							});
-							//console.log(resultTRVName);
-							//console.log(thermostat.trvnameakt);
-						}
-					});
-					request = proto + address + ":" + port.toString() + devicesReq;
-					$.ajax({
-						url: request,
-						async: false, // (tudom: blokkol, de ha így kell maradjon)
-						success: function (res) {
-							thermostat.doornameakt = [];
-							if (!res || !res.result) return;
-
-							res.result.forEach(function (item) {
-								const type = (item.SwitchType || "").toLowerCase();
-
-								// Fogja: "door", "door lock", "contact", "door sensor", stb.
-								if (type.includes("door") || type.includes("contact") || type.includes("lock")) {
-									thermostat.doornameakt.push(`${item.Unit}:${item.Name}:${item.idx}`);
-								}
-							});
-							// console.log(thermostat.doornameakt);
-						}
-					});
-					request=proto+address + ":" + port.toString() + devicesReq;
-					$.ajax({url: request,
-						async: false,
-						success: function(resultDevice){
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 6 && resultDevice.result[j].Used == 1) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTempIn){
-											if (!resultTempIn.result || !Array.isArray(resultTempIn.result)) {
-												//console.error("Hibás vagy üres válasz:", resultTempIn);
-												return;
-											}
-											//console.log(resultTempIn);
-											thermostat.TempIn = resultTempIn.result;
-											minDate = Math.min.apply(null,
-												resultTempIn.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 69 && resultDevice.result[j].Used == 1) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTempOut){
-											if (!resultTempOut.result || !Array.isArray(resultTempOut.result)) {
-												//console.error("Hibás vagy üres válasz:", resultTempOut);
-												return;
-											}
-											//console.log(resultTempOut);
-											thermostat.tempOut = resultTempOut.result;
-											minDate = Math.min.apply(null,
-												resultTempOut.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 72 && resultDevice.result[j].Used == 1) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultKevero_1_temp){
-											if (!resultKevero_1_temp || !Array.isArray(resultKevero_1_temp.result)) {
-												//console.error("Hibás vagy üres válasz:", resultKevero_1_temp);
-												return;
-											}
-											//console.log(resultKevero_1_temp);
-											thermostat.Kevero_1_temp = resultKevero_1_temp.result;
-											minDate = Math.min.apply(null,
-												resultKevero_1_temp.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 73 && resultDevice.result[j].Used == 1) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultKevero_2_temp){
-											if (!resultKevero_2_temp || !Array.isArray(resultKevero_2_temp.result)) {
-												//console.error("Hibás vagy üres válasz:", resultKevero_2_temp);
-												return;
-											}
-											//console.log(resultKevero_2_temp);
-											thermostat.Kevero_2_temp = resultKevero_2_temp.result;
-											minDate = Math.min.apply(null,
-												resultKevero_2_temp.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 19 && resultDevice.result[j].Used == 1) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resulttempTartaly){
-											if (!resulttempTartaly || !Array.isArray(resulttempTartaly.result)) {
-												//console.error("Hibás vagy üres válasz:", resulttempTartaly);
-												return;
-											}
-											//console.log(resulttempTartaly);
-											thermostat.tempTartaly = resulttempTartaly.result;
-											minDate = Math.min.apply(null,
-												resulttempTartaly.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 97) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resulttempOutdew){
-											if (!resulttempOutdew || !Array.isArray(resulttempOutdew.result)) {
-												//console.error("Hibás vagy üres válasz:", resulttempOutdew);
-												return;
-											}
-											//console.log(resulttempOutdew);
-											thermostat.tempOutdew = resulttempOutdew.result;
-											minDate = Math.min.apply(null,
-												resulttempOutdew.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 157) {
-									var request=proto+address + ":" + port.toString() + tempReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resulttempIntdew){
-											if (!resulttempIntdew || !Array.isArray(resulttempIntdew.result)) {
-												//console.error("Hibás vagy üres válasz:", resulttempIntdew);
-												return;
-											}
-											//console.log(resulttempIntdew);
-											thermostat.tempIntdew = resulttempIntdew.result;
-											minDate = Math.min.apply(null,
-												resulttempIntdew.result.map(function (item) {
-													return new Date(item.d);
-												})
-											);
-										}
-									});
-								}
-							}
-
-
-
-
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 23) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultElsodleges_F){
-											if (!resultElsodleges_F || !Array.isArray(resultElsodleges_F.result)) {
-												//console.error("Hibás vagy üres válasz:", resultElsodleges_F);
-												return;
-											}
-											//console.log(resultElsodleges_F);
-											thermostat.Elsodleges_F = new Elsodleges_F();
-											if (typeof(resultElsodleges_F.result) != "undefined") {
-												thermostat.Elsodleges_F.historic = resultElsodleges_F.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-												
-												lastState = resultElsodleges_F.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Elsodleges_F.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Elsodleges_F.historic.push(currentState);
-												}
-
-											} else {
-												thermostat.Elsodleges_F.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 26) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultMasodlagos_F){
-											if (!resultMasodlagos_F || !Array.isArray(resultMasodlagos_F.result)) {
-												//console.error("Hibás vagy üres válasz:", resultMasodlagos_F);
-												return;
-											}
-											//console.log(resultMasodlagos_F);
-											thermostat.Masodlagos_F = new Masodlagos_F();
-											if (typeof(resultMasodlagos_F.result) != "undefined") {
-												thermostat.Masodlagos_F.historic = resultMasodlagos_F.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-												
-												lastState = resultMasodlagos_F.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Masodlagos_F.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Masodlagos_F.historic.push(currentState);
-												}
-
-											} else {
-												thermostat.Masodlagos_F.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 25) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultElsodleges_H){
-											if (!resultElsodleges_H || !Array.isArray(resultElsodleges_H.result)) {
-												//console.error("Hibás vagy üres válasz:", resultElsodleges_H);
-												return;
-											}
-											//console.log(resultElsodleges_H);
-											thermostat.Elsodleges_H = new Elsodleges_H();
-											if (typeof(resultElsodleges_H.result) != "undefined") {
-												thermostat.Elsodleges_H.historic = resultElsodleges_H.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-												
-												lastState = resultElsodleges_H.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Elsodleges_H.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Elsodleges_H.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Elsodleges_H.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 28) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultMasodlagos_H){
-											if (!resultMasodlagos_H || !Array.isArray(resultMasodlagos_H.result)) {
-												//console.error("Hibás vagy üres válasz:", resultMasodlagos_H);
-												return;
-											}
-											//console.log(resultMasodlagos_H);
-											thermostat.Masodlagos_H = new Masodlagos_H();
-											if (typeof(resultMasodlagos_H.result) != "undefined") {
-												thermostat.Masodlagos_H.historic = resultMasodlagos_H.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultMasodlagos_H.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Masodlagos_H.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Masodlagos_H.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Masodlagos_H.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 24) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultElsodleges_M){
-											if (!resultElsodleges_M || !Array.isArray(resultElsodleges_M.result)) {
-												//console.error("Hibás vagy üres válasz:", resultElsodleges_M);
-												return;
-											}
-											//console.log(resultElsodleges_M);
-											thermostat.Elsodleges_M = new Elsodleges_M();
-											if (typeof(resultElsodleges_M.result) != "undefined") {
-												thermostat.Elsodleges_M.historic = resultElsodleges_M.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultElsodleges_M.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Elsodleges_M.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Elsodleges_M.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Elsodleges_M.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 27) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultMasodlagos_M){
-											if (!resultMasodlagos_M || !Array.isArray(resultMasodlagos_M.result)) {
-												//console.error("Hibás vagy üres válasz:", resultMasodlagos_M);
-												return;
-											}
-											//console.log(resultMasodlagos_M);
-											thermostat.Masodlagos_M = new Masodlagos_M();
-											if (typeof(resultMasodlagos_M.result) != "undefined") {
-												thermostat.Masodlagos_M.historic = resultMasodlagos_M.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultMasodlagos_M.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Masodlagos_M.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Masodlagos_M.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Masodlagos_M.historic = "";
-											}
-										}
-									});
-								}
-							}
-
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 102) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultElsodleges_P){
-											if (!resultElsodleges_P || !Array.isArray(resultElsodleges_P.result)) {
-												//console.error("Hibás vagy üres válasz:", resultElsodleges_P);
-												return;
-											}
-											//console.log(resultElsodleges_P);
-											thermostat.Elsodleges_P = new Elsodleges_P();
-											if (typeof(resultElsodleges_P.result) != "undefined") {
-												thermostat.Elsodleges_P.historic = resultElsodleges_P.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultElsodleges_P.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Elsodleges_P.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Elsodleges_P.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Elsodleges_P.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 103) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultMasodlagos_P){
-											if (!resultMasodlagos_P || !Array.isArray(resultMasodlagos_P.result)) {
-												//console.error("Hibás vagy üres válasz:", resultMasodlagos_P);
-												return;
-											}
-											//console.log(resultMasodlagos_P);
-											thermostat.Masodlagos_P = new Masodlagos_P();
-											if (typeof(resultMasodlagos_P.result) != "undefined") {
-												thermostat.Masodlagos_P.historic = resultMasodlagos_P.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultMasodlagos_P.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Masodlagos_P.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Masodlagos_P.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Masodlagos_P.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 33) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultElsodleges_E){
-											if (!resultElsodleges_E || !Array.isArray(resultElsodleges_E.result)) {
-												//console.error("Hibás vagy üres válasz:", resultElsodleges_E);
-												return;
-											}
-											//console.log(resultElsodleges_E);
-											thermostat.Elsodleges_E = new Elsodleges_E();
-											if (typeof(resultElsodleges_E.result) != "undefined") {
-												thermostat.Elsodleges_E.historic = resultElsodleges_E.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultElsodleges_E.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Elsodleges_E.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Elsodleges_E.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Elsodleges_E.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 34) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultMasodlagos_E){
-											if (!resultMasodlagos_E || !Array.isArray(resultMasodlagos_E.result)) {
-												//console.error("Hibás vagy üres válasz:", resultMasodlagos_E);
-												return;
-											}
-											//console.log(resultMasodlagos_E);
-											thermostat.Masodlagos_E = new Masodlagos_E();
-											if (typeof(resultMasodlagos_E.result) != "undefined") {
-												thermostat.Masodlagos_E.historic = resultMasodlagos_E.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultMasodlagos_E.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Masodlagos_E.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Masodlagos_E.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Masodlagos_E.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 160) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultElsodleges_PE){
-											if (!resultElsodleges_PE || !Array.isArray(resultElsodleges_PE.result)) {
-												//console.error("Hibás vagy üres válasz:", resultElsodleges_PE);
-												return;
-											}
-											//console.log(resultElsodleges_PE);
-											thermostat.Elsodleges_PE = new Elsodleges_PE();
-											if (typeof(resultElsodleges_PE.result) != "undefined") {
-												thermostat.Elsodleges_PE.historic = resultElsodleges_PE.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultElsodleges_PE.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Elsodleges_PE.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Elsodleges_PE.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Elsodleges_PE.historic = "";
-											}
-										}
-									});
-								}
-							}
-							for(var j=0;j<resultDevice.result.length;j++) {
-								if(thermostat.id == resultDevice.result[j].HardwareID && resultDevice.result[j].Unit == 161) {
-									request=proto+address + ":" + port.toString() + switchReq + resultDevice.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultMasodlagos_PE){
-											if (!resultMasodlagos_PE || !Array.isArray(resultMasodlagos_PE.result)) {
-												//console.error("Hibás vagy üres válasz:", resultMasodlagos_PE);
-												return;
-											}
-											//console.log(resultMasodlagos_PE);
-											thermostat.Masodlagos_PE = new Masodlagos_PE();
-											if (typeof(resultMasodlagos_PE.result) != "undefined") {
-												thermostat.Masodlagos_PE.historic = resultMasodlagos_PE.result.filter(item => new Date(item.Date).getTime() >= minDate).sort((a,b)=>new Date(a.Date).getTime()>new Date(b.Date).getTime());
-											
-												lastState = resultMasodlagos_PE.result.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()).slice(-1)[0]; 
-												lastStateDate = new Date(lastState.Date).getTime();
-												
-												if (lastStateDate < minDate && lastState.Status === "On") {
-													minDateState = { ...lastState, Date: new Date(minDate).toISOString() };
-													thermostat.Masodlagos_PE.historic.unshift(minDateState);
-													currentTime = Date.now();
-													currentState = { ...lastState, Date: new Date(currentTime).toISOString() };
-													thermostat.Masodlagos_PE.historic.push(currentState);
-												}
-											
-											} else {
-												thermostat.Masodlagos_PE.historic = "";
-											}
-										}
-									});
-								}
-							}
-						}
-					});
-					request = proto + address + ":" + port.toString() + userVarReq;
-					$.ajax({
-						url: request,
-						async: false,
-						success: function (resultVars) {
-							thermostat.acValues = {};
-							resultVars.result.forEach(function (item) {
-								if (
-									item.Name.startsWith(`${name}`) &&
-									item.Name.includes("_AC_")
-								) {
-									try {
-										const regex = /_Z_(\d+)_AC_(F|H)$/;
-										const match = item.Name.match(regex);
-										if (!match) return;
-										const zoneId = parseInt(match[1], 10); // "1"
-										const acType = match[2]; // "F" vagy "H"
-										var fixed = item.Value
-											.replace(/'/g, '"')
-											.replace(/\bNone\b/g, 'null')
-											.replace(/\bTrue\b/g, 'true')
-											.replace(/\bFalse\b/g, 'false');
-										var parsed = JSON.parse(fixed);
-										if (!thermostat.acValues[zoneId]) {
-											thermostat.acValues[zoneId] = {};
-										}
-										thermostat.acValues[zoneId][acType] = parsed;
-									} catch (e) {
-										console.warn("Hibás JSON user variable: " + item.Name + " = " + item.Value);
-									}
-								}
-							});
-						}
-					});
-					// Kilistázzuk a klíma adatokat a táblázathoz
-					let klimaTabla = [];
-					for (let z = 1; z <= 12; z++) {
-						["F", "H"].forEach(function (tipus) {
-							let adat = thermostat.acValues[z]?.[tipus]; // mivel zoneId szám volt, itt is szám a kulcs
-
-							klimaTabla.push({
-								zona: z,
-								tipus: tipus,
-								type: adat?.type && adat.type !== "" && adat.type !== "-" ? adat.type : "nincs",
-								IP: adat?.IP && adat.IP !== "" && adat.IP !== "nincs" ? adat.IP : "nincs",
-								fanspeed: (adat?.fanspeed ?? "nincs"),
-								swingv: (adat?.swingv ?? "nincs"),
-								swingh: (adat?.swingh ?? "nincs"),
-								komp: (adat?.komp ?? 0),
-								hatar_low: (adat?.hatar_low ?? 0),
-								hatar_top: (adat?.hatar_top ?? 0),
-								target_off: (adat?.target_off ?? false),
-								AC_jelenlet: adat?.AC_jelenlet ?? "None"
-							});
-						});
-					}
-					thermostat.klimatabla = klimaTabla;
-					//console.table(klimaTabla);
-					request=proto+address + ":" + port.toString() + devicesReq;
-					$.ajax({url: request,
-						async: false,
-						success: function(resultTemp){
-							for(var j=0;j<resultTemp.result.length;j++) {
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 10 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.Fsetpoint = resultTemp.result;
-										}
-									});
-								}
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 20 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.Hsetpoint = resultTemp.result;
-										}
-									});
-								}
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 21 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.Msetpoint = resultTemp.result;
-										}
-									});
-								}
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 100 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.Psetpoint = resultTemp.result;
-										}
-									});
-								}
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 154 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.hiszterezis = resultTemp.result;
-										}
-									});
-								}
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 158 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.aktcelmax = resultTemp.result;
-										}
-									});
-								}
-								if(thermostat.id == resultTemp.result[j].HardwareID && resultTemp.result[j].Unit == 159 && resultTemp.result[j].Used == 1) {
-									request=proto+address + ":" + port.toString() + tempReq + resultTemp.result[j].idx;
-									$.ajax({url: request,
-										async: false,
-										success: function(resultTemp){
-											//console.log(resultTemp);
-											thermostat.aktcelmin = resultTemp.result;
-										}
-									});
-								}
-							}
-						}
-					});
-					thermostats.push(thermostat);
-				}
-			}
-			//console.log(thermostats);
-		}
+// Load API resources concurrently with a bounded request count | API-adatok párhuzamos betöltése korlátozott kérésszámmal
+function dsvtApi(url) {
+	return new Promise((resolve, reject) => {
+		$.ajax({url: url, dataType: "json", timeout: 15000, cache: false})
+			.done(resolve)
+			.fail((xhr, status, error) => reject(new Error(url + ": " + (error || status))));
 	});
-	return thermostats;
 }
 
+async function dsvtRunLimited(tasks, limit) {
+	let next = 0;
+	const workers = Array.from({length: Math.min(limit, tasks.length)}, async () => {
+		while (next < tasks.length) {
+			const index = next++;
+			try {
+				await tasks[index]();
+			} catch (error) {
+				console.warn("DSVT data request failed | DSVT adatlekérés sikertelen:", error);
+			}
+		}
+	});
+	await Promise.all(workers);
+}
 
+function dsvtNormalizeName(name) {
+	return String(name || "").normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.replace(/\s+/g, "_").toLowerCase();
+}
 
+// Returns Promise<Array>; the HTML caller must await this function | Tömböt tartalmazó Promise; a HTML-hívónak await szükséges
+async function getThermostats() {
+	nodata = true;
+	const prefix = proto + address + ":" + port.toString();
+	const [hardwareResponse, devicesResponse, variablesResponse] = await Promise.all([
+		dsvtApi(prefix + hardwareReq),
+		dsvtApi(prefix + devicesReq),
+		dsvtApi(prefix + userVarReq).catch(error => {
+			console.warn("Cannot load AC settings | A klímabeállítások nem tölthetők be:", error);
+			return {result: []};
+		})
+	]);
+
+	const hardware = Array.isArray(hardwareResponse.result) ? hardwareResponse.result : [];
+	const devices = Array.isArray(devicesResponse.result) ? devicesResponse.result : [];
+	const variables = Array.isArray(variablesResponse.result) ? variablesResponse.result : [];
+	const byIdx = new Map(devices.map(item => [String(item.idx), item]));
+	const thermostats = [];
+	const temperatureTasks = [];
+	const historyTasks = [];
+
+	for (const hw of hardware) {
+		if (hw.Extra !== "DSVT_HMV_ZONE_12" || String(hw.Enabled).toLowerCase() !== "true") continue;
+		nodata = false;
+		const thermostat = new DSVT_HMV_ZONE_12_Thermostat();
+		thermostat.name = hw.Name;
+		thermostat.id = hw.idx;
+		thermostat.host = hw.Address;
+		thermostat.uname = hw.Username;
+		thermostat.pass = hw.Password;
+		thermostat.port = hw.Port;
+		for (let n = 1; n <= 6; n++) thermostat["Mode" + n] = hw["Mode" + n];
+		thermostat.dayname = ["Monday:0", "Tuesday:1", "Wednesday:2", "Thursday:3", "Friday:4", "Saturday:5", "Sunday:6"];
+
+		// All selection lists come from the single getdevices response | Minden választólista az egyetlen getdevices válaszból készül
+		thermostat.aktname = devices.map(item => item.Unit + ":" + item.Name + ":" + item.idx);
+		thermostat.tempnameakt = devices.filter(item => {
+			const kind = String(item.Type || "").toLowerCase();
+			const source = String(item.HardwareName || "").toLowerCase();
+			return kind.includes("temp") && Number(item.Used) === 1 && (source.includes("dummy") || source.includes("zigbee"));
+		}).map(item => item.Unit + ":" + item.Name + ":" + item.idx);
+		thermostat.switchnameakt = devices.filter(item => String(item.SwitchType || "").toLowerCase().includes("on/off") && Number(item.Used) === 1)
+			.map(item => item.Unit + ":" + item.Name + ":" + item.idx);
+		thermostat.setpointnameakt = devices.filter(item => String(item.SubType || "").toLowerCase().includes("setpoint") && String(item.HardwareID) === String(hw.idx))
+			.map(item => item.Unit + ":" + item.Name + ":" + item.idx + ":" + item.SetPoint);
+		thermostat.consolenameakt = devices.filter(item => String(item.Type || "").toLowerCase().includes("thermostat") && String(item.HardwareID) !== String(hw.idx))
+			.map(item => item.Unit + ":" + item.Name + ":" + item.idx + ":" + item.SetPoint);
+		thermostat.trvnameakt = devices.filter(item => String(item.SubType || "").toLowerCase().includes("setpoint") && String(item.HardwareName || "").toLowerCase().includes("zigbee"))
+			.map(item => item.Unit + ":" + item.Name + ":" + item.idx);
+		thermostat.doornameakt = devices.filter(item => /door|contact|lock/.test(String(item.SwitchType || "").toLowerCase()))
+			.map(item => item.Unit + ":" + item.Name + ":" + item.idx);
+
+		thermostat.acValues = {};
+		for (const item of variables) {
+			if (!String(item.Name || "").startsWith(thermostat.name) || !String(item.Name || "").includes("_AC_")) continue;
+			const match = String(item.Name).match(/_Z_(\d+)_AC_(F|H)$/);
+			if (!match) continue;
+			try {
+				const fixed = String(item.Value).replace(/'/g, '"').replace(/\bNone\b/g, "null")
+					.replace(/\bTrue\b/g, "true").replace(/\bFalse\b/g, "false");
+				const zone = Number(match[1]);
+				if (!thermostat.acValues[zone]) thermostat.acValues[zone] = {};
+				thermostat.acValues[zone][match[2]] = JSON.parse(fixed);
+			} catch (error) {
+				console.warn("Invalid AC variable | Hibás klímaváltozó:", item.Name, error);
+			}
+		}
+		thermostat.klimatabla = [];
+		for (let zone = 1; zone <= 12; zone++) {
+			for (const mode of ["F", "H"]) {
+				const value = (thermostat.acValues[zone] || {})[mode] || {};
+				thermostat.klimatabla.push({
+					zona: zone, tipus: mode,
+					type: value.type && value.type !== "-" ? value.type : "nincs",
+					IP: value.IP && value.IP !== "nincs" ? value.IP : "nincs",
+					fanspeed: value.fanspeed ?? "nincs", swingv: value.swingv ?? "nincs", swingh: value.swingh ?? "nincs",
+					komp: value.komp ?? 0, hatar_low: value.hatar_low ?? 0, hatar_top: value.hatar_top ?? 0,
+					target_off: value.target_off ?? false, AC_jelenlet: value.AC_jelenlet ?? "None"
+				});
+			}
+		}
+
+		const unitFields = {
+			6: "TempIn", 69: "tempOut", 72: "Kevero_1_temp", 73: "Kevero_2_temp", 19: "tempTartaly",
+			97: "tempOutdew", 157: "tempIntdew", 10: "Fsetpoint", 20: "Hsetpoint", 21: "Msetpoint",
+			100: "Psetpoint", 154: "hiszterezis", 158: "aktcelmax", 159: "aktcelmin"
+		};
+		const historyFields = {
+			23: "Elsodleges_F", 26: "Masodlagos_F", 25: "Elsodleges_H", 28: "Masodlagos_H",
+			24: "Elsodleges_M", 27: "Masodlagos_M", 102: "Elsodleges_P", 103: "Masodlagos_P",
+			33: "Elsodleges_E", 34: "Masodlagos_E", 160: "Elsodleges_PE", 161: "Masodlagos_PE"
+		};
+		const own = devices.filter(item => String(item.HardwareID) === String(hw.idx));
+		const minDates = [];
+		const graphRequests = new Map();
+		function queueGraph(idx, assign, isBase) {
+			const key = String(idx);
+			if (!graphRequests.has(key)) graphRequests.set(key, {callbacks: [], isBase: false});
+			const entry = graphRequests.get(key);
+			entry.callbacks.push(assign);
+			if (isBase) entry.isBase = true;
+		}
+
+		// Zone names use the already fetched device list | Zónanevek a már lekért eszközlistából
+		thermostat.zonetemp = [];
+		for (const entry of String(hw.Mode1 || "").split(",")) {
+			const [key, idx] = entry.split(":");
+			if (!key || !key.startsWith("Z_") || !idx) continue;
+			const device = byIdx.get(String(idx));
+			if (!device) continue;
+			const normalized = dsvtNormalizeName(device.Name);
+			const field = "zonetemp_" + key + "_" + normalized;
+			queueGraph(idx, result => {
+				thermostat[field] = result;
+				thermostat.zonetemp.push(idx + ":" + normalized);
+			}, false);
+		}
+
+		for (const item of own) {
+			const unit = Number(item.Unit);
+			const field = unitFields[unit];
+			if (field && (unit === 97 || unit === 157 || Number(item.Used) === 1)) {
+				queueGraph(item.idx, result => { thermostat[field] = result; }, true);
+			}
+			const history = historyFields[unit];
+			if (history) {
+				// History is processed after temperature graphs establish the timeline | Kapcsolási előzmények feldolgozása a grafikonok időtengelyének meghatározása után
+				historyTasks.push({thermostat, name: history, idx: item.idx, minDates});
+			}
+		}
+		for (const [idx, entry] of graphRequests) {
+			temperatureTasks.push(async () => {
+				const data = await dsvtApi(prefix + tempReq + idx);
+				if (!Array.isArray(data.result)) return;
+				for (const callback of entry.callbacks) callback(data.result);
+				if (entry.isBase) {
+					for (const point of data.result) {
+						const date = new Date(point.d).getTime();
+						if (Number.isFinite(date)) minDates.push(date);
+					}
+				}
+			});
+		}
+		thermostats.push(thermostat);
+	}
+
+	// Up to six requests at a time; no synchronous browser blocking | Legfeljebb hat párhuzamos kérés; nincs szinkron böngészőblokkolás
+	await dsvtRunLimited(temperatureTasks, 6);
+	const logTasks = historyTasks.map(job => async () => {
+		const data = await dsvtApi(prefix + switchReq + job.idx);
+		if (!Array.isArray(data.result)) return;
+		const sorted = data.result.slice().sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+		const minDate = job.minDates.length ? Math.min(...job.minDates) : 0;
+		const historic = sorted.filter(item => new Date(item.Date).getTime() >= minDate);
+		const last = sorted[sorted.length - 1];
+		if (last && new Date(last.Date).getTime() < minDate && last.Status === "On") {
+			historic.unshift({...last, Date: new Date(minDate).toISOString()});
+			historic.push({...last, Date: new Date().toISOString()});
+		}
+		job.thermostat[job.name] = {historic};
+	});
+	await dsvtRunLimited(logTasks, 6);
+	return thermostats;
+}

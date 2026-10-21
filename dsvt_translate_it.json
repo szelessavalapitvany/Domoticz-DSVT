@@ -283,5 +283,7 @@
 	"Virtual hydraulic shifter": "Virtual hydraulic shifter",
 	"Active– zone": "Attivo– Zona",
 	"TRV target temperature diff": "TRV obiettivo temperatura diff",
-	"Watt limit hysteresis": "Watt limite isteresi"
+	"Watt limit hysteresis": "Watt limite isteresi",
+	"Frost protection temperature limit": "Limite di temperatura della protezione antigelo",
+	"Frost protection hysteresis": "Isteresi della protezione antigelo"
 }

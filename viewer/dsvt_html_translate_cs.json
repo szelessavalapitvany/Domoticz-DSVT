@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Vypršel časový limit požadavku",
     "({idx}) Exception: {error}": "({idx}) Výjimka: {error}",
     "All setpoints updated": "Všechny cílové teploty aktualizovány",
-    "Update complete, reloading page...": "Aktualizace dokončena, stránka se znovu načítá..."
+    "Update complete, reloading page...": "Aktualizace dokončena, stránka se znovu načítá...",
+    "Frost protection thermometers": "Teploměry protimrazové ochrany",
+    "Frost protection devices": "Zařízení protimrazové ochrany",
+    "➕ Add switch": "➕ Přidat spínač",
+    "Pump protection devices": "Chráněné ventily a čerpadla",
+    "➕ Add pump switch": "➕ Přidat spínač čerpadla",
+    "Day of week": "Den spínání",
+    "Start hour": "Hodina spuštění",
+    "Running time (minutes)": "Doba provozu (minuty)",
+    "Device 1 DHW disinfection": "Dezinfekce teplé vody – 1. zařízení",
+    "Device 2 DHW disinfection": "Dezinfekce teplé vody – 2. zařízení",
+    "Day": "Den",
+    "Hour": "Hodina",
+    "Off": "Vypnuto"
 }

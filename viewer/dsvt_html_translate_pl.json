@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Przekroczono limit czasu żądania",
     "({idx}) Exception: {error}": "({idx}) Wyjątek: {error}",
     "All setpoints updated": "Zaktualizowano wszystkie temperatury zadane",
-    "Update complete, reloading page...": "Aktualizacja zakończona, ponowne ładowanie strony..."
+    "Update complete, reloading page...": "Aktualizacja zakończona, ponowne ładowanie strony...",
+    "Frost protection thermometers": "Czujniki temperatury ochrony przed zamarzaniem",
+    "Frost protection devices": "Urządzenia ochrony przed zamarzaniem",
+    "➕ Add switch": "➕ Dodaj przełącznik",
+    "Pump protection devices": "Zawory i pompy wymagające ochrony",
+    "➕ Add pump switch": "➕ Dodaj przełącznik pompy",
+    "Day of week": "Dzień załączenia",
+    "Start hour": "Godzina uruchomienia",
+    "Running time (minutes)": "Czas pracy (minuty)",
+    "Device 1 DHW disinfection": "Dezynfekcja ciepłej wody – urządzenie 1",
+    "Device 2 DHW disinfection": "Dezynfekcja ciepłej wody – urządzenie 2",
+    "Day": "Dzień",
+    "Hour": "Godzina",
+    "Off": "Wyłączone"
 }

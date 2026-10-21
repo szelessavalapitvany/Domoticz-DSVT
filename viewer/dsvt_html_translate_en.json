@@ -133,5 +133,18 @@
     "({idx}) Request timed out": "({idx}) Request timed out",
     "({idx}) Exception: {error}": "({idx}) Exception: {error}",
     "All setpoints updated": "All setpoints updated",
-    "Update complete, reloading page...": "Update complete, reloading page..."
+    "Update complete, reloading page...": "Update complete, reloading page...",
+    "Frost protection thermometers": "Frost protection thermometers",
+    "Frost protection devices": "Frost protection devices",
+    "➕ Add switch": "➕ Add switch",
+    "Pump protection devices": "Valves and pumps to protect",
+    "➕ Add pump switch": "➕ Add pump switch",
+    "Day of week": "Switching day",
+    "Start hour": "Start hour",
+    "Running time (minutes)": "Running time (minutes)",
+    "Device 1 DHW disinfection": "Device 1 DHW disinfection",
+    "Device 2 DHW disinfection": "Device 2 DHW disinfection",
+    "Day": "Day",
+    "Hour": "Hour",
+    "Off": "Off"
 }

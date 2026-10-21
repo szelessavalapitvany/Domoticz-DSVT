@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Tidsgränsen för begäran överskreds",
     "({idx}) Exception: {error}": "({idx}) Undantag: {error}",
     "All setpoints updated": "Alla måltemperaturer har uppdaterats",
-    "Update complete, reloading page...": "Uppdateringen är klar, sidan läses in igen..."
+    "Update complete, reloading page...": "Uppdateringen är klar, sidan läses in igen...",
+    "Frost protection thermometers": "Temperaturgivare för frostskydd",
+    "Frost protection devices": "Frostskyddsenheter",
+    "➕ Add switch": "➕ Lägg till brytare",
+    "Pump protection devices": "Ventiler och pumpar som ska skyddas",
+    "➕ Add pump switch": "➕ Lägg till pumpbrytare",
+    "Day of week": "Aktiveringsdag",
+    "Start hour": "Starttimme",
+    "Running time (minutes)": "Drifttid (minuter)",
+    "Device 1 DHW disinfection": "Desinfektion av tappvarmvatten – enhet 1",
+    "Device 2 DHW disinfection": "Desinfektion av tappvarmvatten – enhet 2",
+    "Day": "Dag",
+    "Hour": "Timme",
+    "Off": "Av"
 }

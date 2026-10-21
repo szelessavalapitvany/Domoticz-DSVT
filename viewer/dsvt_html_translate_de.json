@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Zeitüberschreitung bei der Anfrage",
     "({idx}) Exception: {error}": "({idx}) Ausnahme: {error}",
     "All setpoints updated": "Alle Solltemperaturen aktualisiert",
-    "Update complete, reloading page...": "Aktualisierung abgeschlossen, Seite wird neu geladen..."
+    "Update complete, reloading page...": "Aktualisierung abgeschlossen, Seite wird neu geladen...",
+    "Frost protection thermometers": "Frostschutz-Temperatursensoren",
+    "Frost protection devices": "Frostschutzgeräte",
+    "➕ Add switch": "➕ Schalter hinzufügen",
+    "Pump protection devices": "Zu schützende Ventile und Pumpen",
+    "➕ Add pump switch": "➕ Pumpenschalter hinzufügen",
+    "Day of week": "Schalttag",
+    "Start hour": "Startstunde",
+    "Running time (minutes)": "Laufzeit (Minuten)",
+    "Device 1 DHW disinfection": "Warmwasserdesinfektion – Gerät 1",
+    "Device 2 DHW disinfection": "Warmwasserdesinfektion – Gerät 2",
+    "Day": "Tag",
+    "Hour": "Stunde",
+    "Off": "Aus"
 }

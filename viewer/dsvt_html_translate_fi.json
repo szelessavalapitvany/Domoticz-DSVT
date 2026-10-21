@@ -136,5 +136,18 @@
     "({idx}) Request timed out": "({idx}) Pyynnön aikakatkaisu",
     "({idx}) Exception: {error}": "({idx}) Poikkeus: {error}",
     "All setpoints updated": "Kaikki tavoitelämpötilat päivitetty",
-    "Update complete, reloading page...": "Päivitys valmis, sivu ladataan uudelleen..."
+    "Update complete, reloading page...": "Päivitys valmis, sivu ladataan uudelleen...",
+    "Frost protection thermometers": "Pakkassuojauksen lämpötila-anturit",
+    "Frost protection devices": "Pakkassuojauksen laitteet",
+    "➕ Add switch": "➕ Lisää kytkin",
+    "Pump protection devices": "Suojattavat venttiilit ja pumput",
+    "➕ Add pump switch": "➕ Lisää pumpun kytkin",
+    "Day of week": "Kytkentäpäivä",
+    "Start hour": "Aloitustunti",
+    "Running time (minutes)": "Käyntiaika (minuuttia)",
+    "Device 1 DHW disinfection": "Käyttöveden desinfiointi – laite 1",
+    "Device 2 DHW disinfection": "Käyttöveden desinfiointi – laite 2",
+    "Day": "Päivä",
+    "Hour": "Tunti",
+    "Off": "Pois käytöstä"
 }
