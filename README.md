@@ -84,6 +84,28 @@ This allows different supply temperatures to be used for different heat distribu
 
 Mixing valve target temperatures can be adjusted according to current system demand.
 
+### Frost protection
+
+DSVT can monitor one or more configured temperature sensors to help protect heating system components against freezing.
+
+- Calculates the average of valid readings from the configured frost protection sensors (`FG_T`)
+- Activates the configured protection switches (`FG_S`) when the average temperature reaches the adjustable frost protection limit
+- Deactivates protection above the limit plus the configured hysteresis, avoiding frequent switching
+- Uses the existing switch command system, where an `On` request takes priority over an `Off` request
+
+If no valid sensor reading is available, no new frost protection command is issued; suitable independent safeguards should therefore be retained where freezing could cause damage.
+
+### Periodic circulation pump anti-seize protection
+
+DSVT can periodically run selected circulation pumps to reduce the risk of seizing during long periods of inactivity.
+
+- Configure the pump switches (`SV_P`), weekday (`SV_D`), start hour (`SV_H`), and running duration in minutes (`SV_M`)
+- Starts a run once per scheduled week within a one-hour start window
+- Stores the scheduled run's expiry time to avoid repeat activation after a plugin restart
+- Adds `On` commands while the protection run is active and `Off` commands afterward through the existing switch command system; other `On` requests retain priority
+
+The protection run can continue beyond the one-hour start window until its configured duration has elapsed.
+
 ### Dew point monitoring in cooling mode
 
 During cooling operation, the system can take the dew point into account.
@@ -428,6 +450,28 @@ Ez lehetővé teszi eltérő előremenő hőmérsékletek használatát különb
 - falhűtés
 
 A keverőszelepek célhőmérséklete a rendszer aktuális igényeihez igazítható.
+
+### Fagyvédelem
+
+A DSVT egy vagy több beállított hőmérő figyelésével segíthet megvédeni a fűtési rendszer elemeit a fagyástól.
+
+- A megadott fagyvédelmi hőmérők (`FG_T`) érvényes méréseiből átlaghőmérsékletet számít
+- A beállítható fagyvédelmi határhőmérséklet elérésekor bekapcsolási igényt küld a megadott kapcsolókra (`FG_S`)
+- A határhőmérséklet és a beállított hiszterézis együttes értéke felett kikapcsolási igényt küld, megelőzve a sűrű kapcsolgatást
+- A meglévő kapcsolásvezérlést használja, amelyben az `On` igény elsőbbséget élvez az `Off` igénnyel szemben
+
+Ha nincs érvényes hőmérsékleti adat, a fagyvédelem nem ad új kapcsolási parancsot, ezért fagyveszélyes rendszerekben indokolt a megfelelő független védelmek megtartása.
+
+### Időszakos keringtetőszivattyú-letapadás elleni védelem
+
+A DSVT rendszeres időközönként megjárathatja a kijelölt keringtetőszivattyúkat, így csökkentheti a hosszabb állásból eredő letapadás kockázatát.
+
+- Beállíthatók a kapcsolók (`SV_P`), a hét napja (`SV_D`), az indítás órája (`SV_H`) és a működési idő percben (`SV_M`)
+- A kijelölt héten egyszer indít járatást, az előírt kezdőórától számított egyórás indítási ablakban
+- A járatás lejárati időpontját eltárolja, így a plugin újraindulása nem okoz ismételt indítást
+- A járatás idején `On`, lejárta után `Off` kapcsolási igényt ad a meglévő vezérléshez; más funkciók `On` igénye elsőbbséget élvez
+
+A járatás az egyórás indítási ablak végén túl is folytatódhat a beállított működési idő lejártáig.
 
 ### Harmatpontfigyelés hűtési üzemben
 
