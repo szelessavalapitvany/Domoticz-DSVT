@@ -8,10 +8,10 @@ https://open-meteo.com/
 
 Weather data is licensed under CC BY 4.0.
 
-Version: 1.3.0 (2026-10-20)
+Version: 1.3.2 (2026-11-01)
 """
 """
-<plugin key="DSVT_HMV_ZONE_12" name="DSVT + HMV (DHW) + 12 ZONE" author="Szelessav" version="1.3.0" externallink="https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer">
+<plugin key="DSVT_HMV_ZONE_12" name="DSVT + HMV (DHW) + 12 ZONE" author="Szelessav" version="1.3.2" externallink="https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer">
 	<description>
 		<h2>Dual Smart Virtual Thermostat + HMV (DHW) ZONE 12</h2><br/>
 		<br/>
@@ -4760,13 +4760,6 @@ class BasePlugin:
 
 			self.pump_protection()
 
-			self.f1works = False
-			self.h1works = False
-			self.p1works = False
-			self.f2works = False
-			self.h2works = False
-			self.p2works = False
-
 			self.frost_protection()
 
 			if self.dhw and Devices[13].sValue != "0" and (Devices[13].Used == 1):
@@ -6800,50 +6793,6 @@ class BasePlugin:
 						else:
 							device["HaveTimeout"] = True
 
-				# Zone sensors | Zónaérzékelők
-				for z in range(1, 13):
-					sensor_list = getattr(self, f"Zone_TempSensors_{z}", [])
-					window_closed = getattr(self, f"zone_{z}_window_closed", True)
-
-					Domoticz.Debug((f'--- Processing zone {z} ---' + " | " + (f"--- Zóna {z} feldolgozása ---")))
-					Domoticz.Debug((f'Zone {z} sensor list: {sensor_list}' + " | " + (f"Zóna {z} szenzorlista: {sensor_list}")))
-					Domoticz.Debug((f'Window status: {"closed" if window_closed else "open"}' + " | " + (f"Ablak állapot: {'zárva' if window_closed else 'nyitva'}")))
-
-					if not sensor_list:
-						Domoticz.Debug((f'No sensors assigned to zone {z}' + " | " + (f"Zóna {z}-ben nincs hozzárendelt szenzor.")))
-						continue
-
-					for idx in sensor_list:
-						matched = False
-						for device in devicesAPI["result"]:
-							if int(device["idx"]) == idx:
-								matched = True
-								Domoticz.Debug((f'Match for zone {z}: {device["idx"]} - {device["Name"]}' + " | " + (f"Találat zóna {z}-hez: {device['idx']} - {device['Name']}")))
-								if "Temp" in device:
-									Domoticz.Debug((f'Temperature: {device["Temp"]} °C, last update: {device["LastUpdate"]}' + " | " + (f"Hőmérséklet: {device['Temp']} °C, LastUpdate: {device['LastUpdate']}")))
-									timed_out = self.SensorTimedOut(idx, device["Name"], device["LastUpdate"])
-									device["HaveTimeout"] = not timed_out
-
-									if not timed_out and window_closed:
-										zone_temps[z].append(device["Temp"])
-										Domoticz.Debug((f'Valid reading added to zone {z} list; total entries: {len(zone_temps[z])}' + " | " + (f"Érvényes adat, hozzáadva zóna {z} listához. "
-											       f"Összes elem: {len(zone_temps[z])}")))
-										if device["Type"] == "Temp + Humidity":
-											dew_value = float(device["DewPoint"])
-											zone_dewpoints[z].append(dew_value)
-											listdewpoint.append(dew_value)
-											Domoticz.Debug((f'Dew point added: {dew_value} °C (zone {z} dew-point entries: {len(zone_dewpoints[z])})' + " | " + (f"Harmatpont hozzáadva: {dew_value} °C "
-												       f"(zóna {z} harmatpont lista mérete: {len(zone_dewpoints[z])})")))
-									else:
-										reason = "időtúllépés" if timed_out else "ablak nyitva"
-										Domoticz.Debug((f'Sensor skipped ({reason}) – {device["Name"]}' + " | " + (f"Szenzor kihagyva ({reason}) – {device['Name']}")))
-								else:
-									Domoticz.Debug((f'{device["idx"]}-{device["Name"]} is not a temperature sensor!' + " | " + (f"{device['idx']}-{device['Name']} nem hőmérséklet szenzor!")))
-								break
-
-						if not matched:
-							Domoticz.Debug((f'Zone {z}: no device found for idx {idx} in devicesAPI list' + " | " + (f"Zóna {z}: {idx} idx-hez nem találtam eszközt a devicesAPI listában.")))
-
 				# Room sensors | Szobaérzékelők
 				if idx in self.szobaTempSensors:
 					if "Temp" in device:
@@ -6853,6 +6802,52 @@ class BasePlugin:
 							device["HaveTimeout"] = False
 						else:
 							device["HaveTimeout"] = True
+		
+
+			# Zone sensors | Zónaérzékelők
+			for z in range(1, 13):
+				sensor_list = getattr(self, f"Zone_TempSensors_{z}", [])
+				window_closed = getattr(self, f"zone_{z}_window_closed", True)
+
+				Domoticz.Debug((f'--- Processing zone {z} ---' + " | " + (f"--- Zóna {z} feldolgozása ---")))
+				Domoticz.Debug((f'Zone {z} sensor list: {sensor_list}' + " | " + (f"Zóna {z} szenzorlista: {sensor_list}")))
+				Domoticz.Debug((f'Window status: {"closed" if window_closed else "open"}' + " | " + (f"Ablak állapot: {'zárva' if window_closed else 'nyitva'}")))
+
+				if not sensor_list:
+					Domoticz.Debug((f'No sensors assigned to zone {z}' + " | " + (f"Zóna {z}-ben nincs hozzárendelt szenzor.")))
+					continue
+
+				for idx in sensor_list:
+					matched = False
+					for device in devicesAPI["result"]:
+						if int(device["idx"]) == idx:
+							matched = True
+							Domoticz.Debug((f'Match for zone {z}: {device["idx"]} - {device["Name"]}' + " | " + (f"Találat zóna {z}-hez: {device['idx']} - {device['Name']}")))
+							if "Temp" in device:
+								Domoticz.Debug((f'Temperature: {device["Temp"]} °C, last update: {device["LastUpdate"]}' + " | " + (f"Hőmérséklet: {device['Temp']} °C, LastUpdate: {device['LastUpdate']}")))
+								timed_out = self.SensorTimedOut(idx, device["Name"], device["LastUpdate"])
+								device["HaveTimeout"] = timed_out
+
+								if not timed_out and window_closed:
+									zone_temps[z].append(device["Temp"])
+									Domoticz.Debug((f'Valid reading added to zone {z} list; total entries: {len(zone_temps[z])}' + " | " + (f"Érvényes adat, hozzáadva zóna {z} listához. "
+										       f"Összes elem: {len(zone_temps[z])}")))
+									if device["Type"] == "Temp + Humidity":
+										dew_value = float(device["DewPoint"])
+										zone_dewpoints[z].append(dew_value)
+										listdewpoint.append(dew_value)
+										Domoticz.Debug((f'Dew point added: {dew_value} °C (zone {z} dew-point entries: {len(zone_dewpoints[z])})' + " | " + (f"Harmatpont hozzáadva: {dew_value} °C "
+											       f"(zóna {z} harmatpont lista mérete: {len(zone_dewpoints[z])})")))
+								else:
+									reason = "időtúllépés" if timed_out else "ablak nyitva"
+									Domoticz.Debug((f'Sensor skipped ({reason}) – {device["Name"]}' + " | " + (f"Szenzor kihagyva ({reason}) – {device['Name']}")))
+							else:
+								Domoticz.Debug((f'{device["idx"]}-{device["Name"]} is not a temperature sensor!' + " | " + (f"{device['idx']}-{device['Name']} nem hőmérséklet szenzor!")))
+							break
+
+					if not matched:
+						Domoticz.Debug((f'Zone {z}: no device found for idx {idx} in devicesAPI list' + " | " + (f"Zóna {z}: {idx} idx-hez nem találtam eszközt a devicesAPI listában.")))
+
 
 		# Temperature and dew-point calculation | Hőmérséklet és harmatpont számítása
 
@@ -7077,14 +7072,15 @@ class BasePlugin:
 			self.Kevero_1_temp_aktual = round(sum(list_kevero_1) / nbtemps, 1)
 			Devices[152].Update(nValue=0, sValue=str(self.Kevero_1_temp_aktual), TimedOut=False)
 		else:
-			Domoticz.Debug(('No temperature reading for mixing valve 1...' + " | " + ("Nincs keverőszelep 1 hőmérséklet...")))
 			self.Kevero_1_temp_aktual = 90
-			if Devices[58].sValue == "10" :
-				self.switch_kevero_1_plusz(False)
-				self.switch_kevero_1_minusz(True)
-			else :
-				self.switch_kevero_1_minusz(False)
-				self.switch_kevero_1_plusz(True)
+			if self.Keveroszelep_1_plusz or self.Keveroszelep_1_minusz:
+				Domoticz.Debug('No temperature reading for mixing valve 1... | Nincs keverőszelep 1 hőmérséklet...')
+				if Devices[58].sValue == "10":
+					self.switch_kevero_1_plusz(False)
+					self.switch_kevero_1_minusz(True)
+				else:
+					self.switch_kevero_1_minusz(False)
+					self.switch_kevero_1_plusz(True)
 
 		# Calculate supply temperature of mixing valve 2 | A 2. keverőszelep előremenő hőmérsékletének kiszámítása
 		nbtemps = len(list_kevero_2)
@@ -7092,14 +7088,15 @@ class BasePlugin:
 			self.Kevero_2_temp_aktual = round(sum(list_kevero_2) / nbtemps, 1)
 			Devices[153].Update(nValue=0, sValue=str(self.Kevero_2_temp_aktual), TimedOut=False)
 		else:
-			Domoticz.Debug(('No temperature reading for mixing valve 2...' + " | " + ("Nincs keverőszelep 2 hőmérséklet...")))
 			self.Kevero_2_temp_aktual = 90
-			if Devices[58].sValue == "10" :
-				self.switch_kevero_2_plusz(False)
-				self.switch_kevero_2_minusz(True)
-			else :
-				self.switch_kevero_2_minusz(False)
-				self.switch_kevero_2_plusz(True)
+			if self.Keveroszelep_2_plusz or self.Keveroszelep_2_minusz:
+				Domoticz.Debug('No temperature reading for mixing valve 2... | Nincs keverőszelep 2 hőmérséklet...')
+				if Devices[58].sValue == "10" :
+					self.switch_kevero_2_plusz(False)
+					self.switch_kevero_2_minusz(True)
+				else :
+					self.switch_kevero_2_minusz(False)
+					self.switch_kevero_2_plusz(True)
 
 		return noerror
 
@@ -8335,6 +8332,7 @@ class BasePlugin:
 					self.switchElsodleges_P_F(False)
 				else :
 					self.switchElsodleges_PE(False)
+					self.dhw_timer()
 					self.switchElsodleges_P_F(True)
 				self.PufferLast = True
 
@@ -8350,6 +8348,7 @@ class BasePlugin:
 					self.switchElsodleges_P_F(False)
 				else :
 					self.switchElsodleges_PE(False)
+					self.dhw_timer()
 					self.switchElsodleges_P_F(True)
 			else : 
 				Domoticz.Debug(('Buffer is colder: switch off | ' + "Hidegebb a puffer kikapcsolás"))
@@ -8360,12 +8359,14 @@ class BasePlugin:
 			if self.PufferAktual > self.P_celhomerseklet - self.P_hiszterezis :
 				Domoticz.Debug(('Buffer above target minus hysteresis: switch on primary source | ' + "Melegebb mint a cél - hiszterezis a puffer elsődleges bekapcsolás!"))
 				self.switchElsodleges_PE(False)
+				self.dhw_timer()
 				self.switchElsodleges_P_H(True)
 				self.PufferLast = True
 
 			elif self.PufferLast and self.PufferAktual >= self.P_celhomerseklet :
 				Domoticz.Debug(('Within hysteresis band during buffer cooling: switch on primary source | ' + "Hiszterezis belűl puffer lehűtés, elsődleges bekapcsolás!"))
 				self.switchElsodleges_PE(False)
+				self.dhw_timer()
 				self.switchElsodleges_P_H(True)
 			else : 
 				Domoticz.Debug(('Cooling: buffer is colder, switch off | ' + "Hűtés hidegebb a puffer kikapcsolás"))
@@ -8392,6 +8393,7 @@ class BasePlugin:
 					self.switchMasodlagos_P_F(False)
 				else :
 					self.switchMasodlagos_PE(False)
+					self.dhw_timer()
 					self.switchMasodlagos_P_F(True)
 				self.PufferLast = True
 
@@ -8405,6 +8407,7 @@ class BasePlugin:
 					self.switchMasodlagos_P_F(False)
 				else :
 					self.switchMasodlagos_PE(False)
+					self.dhw_timer()
 					self.switchMasodlagos_P_F(True)
 			else :
 				Domoticz.Debug(('Buffer cold: switch off secondary source | ' + "Hideg a puffer – másodlagos kikapcsolás"))
@@ -8416,12 +8419,14 @@ class BasePlugin:
 			if self.PufferAktual > self.P_celhomerseklet - self.P_hiszterezis :
 				Domoticz.Debug(('Buffer above target with hysteresis: switch on secondary source | ' + "Melegebb mint a cél – hiszterézis, puffer másodlagos bekapcsolás"))
 				self.switchMasodlagos_PE(False)
+				self.dhw_timer()
 				self.switchMasodlagos_P_H(True)
 				self.PufferLast = True
 
 			elif self.PufferLast and self.PufferAktual >= self.P_celhomerseklet :
 				Domoticz.Debug(('Within hysteresis band during buffer cooling: switch on secondary source | ' + "Hiszterézisen belül, puffer lehűtés – másodlagos bekapcsolás"))
 				self.switchMasodlagos_PE(False)
+				self.dhw_timer()
 				self.switchMasodlagos_P_H(True)
 			else :
 				Domoticz.Debug(('Buffer cold: switch off secondary source | ' + "Hideg a puffer – másodlagos kikapcsolás"))
@@ -8501,6 +8506,7 @@ class BasePlugin:
 			else :
 				Domoticz.Debug(('Within hysteresis band; one device required during heating, DHW E unavailable or outside its threshold | ' + "Hiszterezis belül - 1 eszkoz kell, felfutes, nincs vagy hataron kivul hmv E"))
 				self.switchElsodleges_E(False)
+				self.dhw_timer()
 				self.switchElsodleges_M(True)
 
 		else : 
@@ -8522,68 +8528,66 @@ class BasePlugin:
 
 		hiszt = float(Devices[15].sValue)
 		out_set = float(Devices[36].sValue)
-		Domoticz.Debug("Outside setpoint (Dev36) = {0} | Külső beállított érték (Dev36) = {0}".format(out_set))
-
 
 		Domoticz.Debug("Hysteresis = {0} | Hiszterézis (hiszt) = {0}".format(hiszt))
 		Domoticz.Debug("Outside setpoint = {0} | Külső beállított érték (out_set) = {0}".format(out_set))
 		Domoticz.Debug("Outside temperature = {0} | Külső hőmérséklet (outtemp) = {0}".format(self.outtemp))
 
-		Domoticz.Debug("Secondary E status = {0} | Másodlagos E = {0}".format(self.Masodlagos_E))
-		Domoticz.Debug("Secondary M status = {0} | Másodlagos M = {0}".format(self.Masodlagos_M))
+		Domoticz.Debug("secondary E status = {0} | másodlagos E = {0}".format(self.Masodlagos_E))
+		Domoticz.Debug("secondary M status = {0} | másodlagos M = {0}".format(self.Masodlagos_M))
+
+		Domoticz.Debug("Tank limit (Dev116) = {0} | Tartályhatár (Dev116) = {0}".format(Devices[116].sValue))
 
 
-		Domoticz.Debug("Tank limit (Dev115) = {0} | Tartályhatár (Dev115) = {0}".format(Devices[115].sValue))
-		
-		self.switchElsodleges_M(False)
-		self.switchElsodleges_E(False)
+		self.switchMasodlagos_M(False)
+		self.switchMasodlagos_E(False)
 
 		hiszt = float(Devices[15].sValue)
 		out_set = float(Devices[36].sValue)
 
-		self.dhw_timer()
-
 		if self.TartalyAktual < self.M_celhomerseklet - self.M_hiszterezis :
-			Domoticz.Debug(('Below target minus hysteresis: switch on secondary DHW source | ' + "Hidegeb mint a cél - hiszterezis a hmv Masodlagos bekapcsolás!"))
+			Domoticz.Debug(('Below target minus hysteresis: switch on secondary DHW source | ' + "Hidegeb mint a cél - hiszterezis a hmv másodlagos bekapcsolás!"))
 			if self.TartalyAktual > float(Devices[116].sValue) and self.Masodlagos_E :
-				Domoticz.Debug(('Below target; two devices required, DHW E available and tank temperature above limit: switch E on | ' + "Hidegeb mint a cél - 2 eszkoz kell, van hmv E és tartaly melegebb mint a limit E bekapcs"))
+				Domoticz.Debug(('Below target; one device required, DHW E available and tank temperature above limit: switch E on | ' + "Hidegeb mint a cél - 1 eszkoz kell, van hmv E es tartaly melegebb mint a limit E bekapcs"))
 				self.switchMasodlagos_E(True)
 				self.switchMasodlagos_M(False)
-			if self.outtemp < out_set - hiszt and self.Masodlagos_E :
-
-				Domoticz.Debug(("Before condition: outdoor temperature compared with the setpoint minus hysteresis | " + ("FELTETEL ELOTT: "+str(self.outtemp)+" < "+str(out_set-hiszt)+" = "+str(self.outtemp < out_set - hiszt))))
-
-				Domoticz.Debug(('Below target; two devices required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hidegeb mint a cél - 2 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
+			elif self.outtemp < out_set - hiszt and self.Masodlagos_E :
+				Domoticz.Debug(('Below target; one device required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hidegeb mint a cél - 1 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
 				self.switchMasodlagos_E(True)
 				self.switchMasodlagos_M(False)
 			elif self.outtemp > out_set + hiszt and self.Masodlagos_E :
 				Domoticz.Debug(('Below target; outside temperature above threshold plus hysteresis: switch E off | ' + "Hidegeb mint a cél - Kint melegebb van mint a határ + hiszterézis, E kikapcs"))
 				self.switchMasodlagos_E(False)
+				self.dhw_timer()
 				self.switchMasodlagos_M(True)
 			else :
-				Domoticz.Debug(('Below target; two devices required, DHW E unavailable or outside its threshold | ' + "Hidegeb mint a cél - 2 eszkoz kell hatarertek, nincs vagy hataron kivul hmv E"))
+				Domoticz.Debug(('Below target; one device required, DHW E unavailable or outside its threshold | ' + "Hidegeb mint a cél - 1 eszkoz kell hatarertek, nincs vagy hataron kivul hmv E"))
 				self.switchMasodlagos_E(False)
+				self.dhw_timer()
 				self.switchMasodlagos_M(True)
 			
 			self.TartalyLast = True
-
+		
 		elif self.TartalyLast and self.TartalyAktual <= self.M_celhomerseklet :
-			Domoticz.Debug(('Within hysteresis band and DHW heating: switch on secondary source | ' + "Hiszterezis belül de nem hűl azaz hmv felfűtés, masodlagos bekapcsolás!"))
+			Domoticz.Debug(('Within hysteresis band and DHW heating: switch on secondary source | ' + "Hiszterezis belül de nem hűl azaz hmv felfűtés, másodlagos bekapcsolás!"))
 			if self.TartalyAktual > float(Devices[116].sValue) and self.Masodlagos_E :
-				Domoticz.Debug(('Within hysteresis band; two devices required, DHW E available and tank temperature above limit: switch E on | ' + "Hiszterezis belül - 2 eszkoz kell, van hmv E és tartaly melegebb mint a limit E bekapcs"))
+				Domoticz.Debug(('Within hysteresis band; one device required, DHW E available and tank temperature above limit: switch E on | ' + "Hiszterezis belül - 1 eszkoz kell, van hmv E es tartaly melegebb mint a limit E bekapcs"))
 				self.switchMasodlagos_E(True)
 				self.switchMasodlagos_M(False)
 			elif self.outtemp < out_set - hiszt and self.Masodlagos_E :
-				Domoticz.Debug(('Within hysteresis band; two devices required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hiszterezis belül - 2 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
+				Domoticz.Debug(('Within hysteresis band; one device required, DHW E available and outside temperature below E threshold minus hysteresis: switch E on | ' + "Hiszterezis belül - 1 eszkoz kell, van hmv E és kint hidegebb van mint a E hatar - hiszterézissel, E bekapcs"))
 				self.switchMasodlagos_E(True)
 				self.switchMasodlagos_M(False)
 			elif self.outtemp > out_set + hiszt and self.Masodlagos_E :
 				Domoticz.Debug(('Within hysteresis band; outside temperature above threshold plus hysteresis: switch E off | ' + "Hiszterezis belül - Kint melegebb van mint a határ + hiszterézis, E kikapcs"))
 				self.switchMasodlagos_E(False)
+				self.dhw_timer()
 				self.switchMasodlagos_M(True)
+			
 			else :
-				Domoticz.Debug(('Within hysteresis band; two devices required during heating, DHW E unavailable or outside its threshold | ' + "Hiszterezis belül - 2 eszkoz kell, felfutes, nincs vagy hataron kivul hmv E"))
+				Domoticz.Debug(('Within hysteresis band; one device required during heating, DHW E unavailable or outside its threshold | ' + "Hiszterezis belül - 1 eszkoz kell, felfutes, nincs vagy hataron kivul hmv E"))
 				self.switchMasodlagos_E(False)
+				self.dhw_timer()
 				self.switchMasodlagos_M(True)
 
 		else : 
@@ -10172,118 +10176,94 @@ class BasePlugin:
 						self.switchElsodleges_F(False)
 						self.switchMasodlagos_F(False)
 
-			# 90: Saver mode (indoor + outdoor temperature, with hysteresis) | 90: Saver mód (belső + külső hőmérséklet, hiszterézissel)
+			# 90: Saver mode (heat pump + boiler assistance, outdoor cutoff) | 90: Saver mód (hőszivattyú + kazánrásegítés, külső letiltás)
 			elif mode == "90":
-				Domoticz.Debug('Switching mode (combined indoor target and outdoor condition, with hysteresis) | Váltó mód (belső cél és külső feltétel kombinációja, hiszterézissel)')
+				Domoticz.Debug('Saver mode: primary, dual assistance or secondary only | Saver mód: elsődleges, közös rásegítés vagy csak másodlagos')
 
-				# Indoor switching point | Belső váltási pont
+				# Indoor assistance thresholds | Belső rásegítési határok
 				target_switch = self.DualFsetpoint - dualdiff
-				upper_int = target_switch + dualhiszt     # Switch back to 1 | Visszaváltás 1-re
-				lower_int = target_switch - dualhiszt     # Switch to 2 | Váltás 2-re
+				upper_int = target_switch + dualhiszt
+				lower_int = target_switch - dualhiszt
 
-				# Outdoor condition | Külső feltétel
-				outer_ok_limit = outlimit - outhiszt      # Allow mode 2 only when it is warm enough | Csak akkor engedélyezett a 2-es mód, ha elég meleg van
+				# Outdoor heat pump cutoff thresholds | Külső hőszivattyú-tiltási határok
+				upper_out = outlimit + outhiszt
+				lower_out = outlimit - outhiszt
 
-				Domoticz.Debug(
-					("Indoor switching limits and outdoor limit | " + (f"belső váltás: lower={lower_int:.2f}, upper={upper_int:.2f}, "
-					f"külső limit={outer_ok_limit:.2f}"))
-				)
-				Domoticz.Debug(("Average indoor temperature and outdoor temperature | " + (f"IntAvgTemp={self.intemp_avg:.2f}, Outtemp={self.outtemp:.2f}")))
+				Domoticz.Debug(f"Saver 90: indoor={self.intemp_avg:.2f}°C, assistance limits={lower_int:.2f}–{upper_int:.2f}°C, outdoor={self.outtemp:.2f}°C, cutoff limits={lower_out:.2f}–{upper_out:.2f}°C | Saver 90: bent={self.intemp_avg:.2f}°C, rásegítési határok={lower_int:.2f}–{upper_int:.2f}°C, kint={self.outtemp:.2f}°C, letiltási határok={lower_out:.2f}–{upper_out:.2f}°C")
 
-				# 1) If indoor temperature exceeds upper, return to mode 1 | 1) Ha bent melegebb van, mint upper, vissza az 1-es módra
-				if self.intemp_avg > upper_int:
-					Domoticz.Debug('Indoor temperature high → primary mode | Magas belső hőmérséklet → elsődleges mód')
-					self.F_last_mode_state = 0
-
-				# 2) If indoor temperature is below lower and outdoor temperature is warm enough, switch to mode 2 | 2) Ha bent hidegebb van, mint lower, de kint elég meleg, váltás a 2-es módra
-				elif self.intemp_avg < lower_int and self.outtemp >= outer_ok_limit:
-					Domoticz.Debug('Indoor temperature low and outdoor condition permits → secondary mode | Alacsony belső hőmérséklet és a külső feltétel megengedi → másodlagos mód')
-					self.F_last_mode_state = 1
-
-				# 3) If both indoor and outdoor temperatures are low, mode 2 is blocked; stay in mode 1 | 3) Ha bent és kint is hideg van, a 2-es mód tiltott; marad az 1-es
-				elif self.intemp_avg < lower_int and self.outtemp < outer_ok_limit:
-					Domoticz.Debug('Indoor temperature low, but outdoors too cold → primary mode | Alacsony belső hőmérséklet, de kint túl hideg → elsődleges mód')
-					self.F_last_mode_state = 0
-
-				# 4) Hysteresis band | 4) Hiszterézistartomány
+				# 0 = heat pump only; 1 = heat pump and boiler; 2 = boiler only | 0 = csak hőszivattyú; 1 = hőszivattyú és kazán; 2 = csak kazán
+				if self.outtemp < lower_out:
+					self.F_last_mode_state = 2
+					Domoticz.Debug('Outdoor temperature below cutoff: boiler only | Kültéri hőmérséklet a letiltási határ alatt: csak kazán')
+				elif self.outtemp <= upper_out and self.F_last_mode_state == 2:
+					Domoticz.Debug('Outdoor temperature in hysteresis band: keep heat pump disabled | Külső hiszterézissáv: hőszivattyú továbbra is tiltva')
 				else:
-					Domoticz.Debug(
-						("Within hysteresis band: retain current mode | " + (f"Hiszterézis tartomány → tartjuk a módot: {self.F_last_mode_state}"))
-					)
+					# Heat pump allowed; indoor temperature determines boiler assistance | Hőszivattyú engedélyezve; a belső hőmérséklet dönti el a kazán rásegítését
+					if self.intemp_avg < lower_int:
+						self.F_last_mode_state = 1
+					elif self.intemp_avg > upper_int or self.F_last_mode_state == 2:
+						self.F_last_mode_state = 0
+					Domoticz.Debug(f"Saver 90 selected state: {self.F_last_mode_state} | Saver 90 kiválasztott állapot: {self.F_last_mode_state}")
 
-				# Execution | --- Végrehajtás ---
-				if self.F_last_mode_state == 0:
-					if self.operation:
-						self.switchElsodleges_F(True)
-					else:
-						self.switchElsodleges_F(False)
-					self.switchMasodlagos_F(False)
-
+				# Respect overall heating demand | Az általános fűtési igény figyelembevétele
+				if self.operation:
+					self.switchElsodleges_F(self.F_last_mode_state != 2)
+					self.switchMasodlagos_F(self.F_last_mode_state != 0)
 				else:
 					self.switchElsodleges_F(False)
-					if self.operation:
-						self.switchMasodlagos_F(True)
-					else:
-						self.switchMasodlagos_F(False)
+					self.switchMasodlagos_F(False)
 
-			# 100: Saver mode (indoor temperature + outdoor dew point, with hysteresis) | 100: Saver mód (belső + külső harmatpont, hiszterézissel)
+
+			# 100: Saver mode (indoor temperature + outdoor dew point) | 100: Saver mód (belső hőmérséklet + külső harmatpont)
 			elif mode == "100":
-				Domoticz.Debug('Switching mode (combined indoor temperature and outdoor dew point, with hysteresis) | Váltó mód (belső hőmérséklet és külső harmatpont kombinációja, hiszterézissel)')
+				Domoticz.Debug('Saver mode: heat pump with boiler assistance and dew point protection | Saver mód: hőszivattyú kazánrásegítéssel és harmatpontvédelemmel')
 
-				# Adjusted outdoor temperature | --- Korrigált külső hőmérséklet ---
-				Tcorr = self.outtemp + outdewpointkomp
-
-				# Dew point hysteresis thresholds | Harmatpont hiszterézis határok
-				safe_low  = Tcorr - outhiszt     # Below: safe, mode 2 is permitted | Alatta: biztonságos, engedélyezett a 2-es mód
-				safe_high = Tcorr + outhiszt     # Above: unsafe, mode 2 is blocked | Fölötte: veszélyes, a 2-es mód tiltott
-
-				# Indoor temperature hysteresis | Belső hőmérséklet hiszterézise
+				# Indoor boiler assistance thresholds | Belső kazánrásegítési határok
 				target_switch = self.DualFsetpoint - dualdiff
-				upper_int = target_switch + dualhiszt    # Back to 1 | Vissza 1-re
-				lower_int = target_switch - dualhiszt    # Switch to 2 | Váltás 2-re
+				upper_int = target_switch + dualhiszt
+				lower_int = target_switch - dualhiszt
 
-				# Debug | Hibakeresés
-				Domoticz.Debug(f"Corrected temperature={Tcorr:.2f}, safe lower bound={safe_low:.2f}, safe upper bound={safe_high:.2f} | Korrigált hőmérséklet={Tcorr:.2f}, biztonságos alsó határ={safe_low:.2f}, biztonságos felső határ={safe_high:.2f}")
-				Domoticz.Debug(f"Indoor lower limit={lower_int:.2f}, upper limit={upper_int:.2f} | Belső alsó határ={lower_int:.2f}, felső határ={upper_int:.2f}")
-				Domoticz.Debug(f"Dew point={self.outdewpoint:.2f}, average indoor temperature={self.intemp_avg:.2f} | Harmatpont={self.outdewpoint:.2f}, belső átlaghőmérséklet={self.intemp_avg:.2f}")
+				# Corrected outdoor dew point (Device 221) | Korrigált kültéri harmatpont (221-es eszköz)
+				dewpoint_limit = self.outdewpoint + outdewpointkomp
 
-				# 1) Indoor condition: too warm; return to primary mode | 1) Belső feltétel: túl meleg van; vissza az elsődleges módra
-				if self.intemp_avg > upper_int:
-					Domoticz.Debug('Indoors too warm → primary mode | Bent túl meleg van → elsődleges mód')
-					self.F_last_mode_state = 0
+				# Outdoor hysteresis thresholds | Külső hiszterézishatárok
+				upper_out = dewpoint_limit + outhiszt
+				lower_out = dewpoint_limit
 
-				# 2) Indoors is cold and dew point is safe; use secondary mode | 2) Bent hideg van, és a harmatpont biztonságos; másodlagos mód
-				elif self.intemp_avg < lower_int and self.outdewpoint < safe_low:
-					Domoticz.Debug('Indoors cold and dew point low → secondary mode | Bent hideg van és alacsony a harmatpont → másodlagos mód')
-					self.F_last_mode_state = 1
+				Domoticz.Debug(f"Saver 100: indoor={self.intemp_avg:.2f}°C, indoor limits={lower_int:.2f}–{upper_int:.2f}°C, outdoor={self.outtemp:.2f}°C, dewpoint={self.outdewpoint:.2f}°C, compensation={outdewpointkomp:.2f}°C, outdoor limits={lower_out:.2f}–{upper_out:.2f}°C | Saver 100: bent={self.intemp_avg:.2f}°C, belső határok={lower_int:.2f}–{upper_int:.2f}°C, kint={self.outtemp:.2f}°C, harmatpont={self.outdewpoint:.2f}°C, kompenzáció={outdewpointkomp:.2f}°C, külső határok={lower_out:.2f}–{upper_out:.2f}°C")
 
-				# 3) Indoors is cold but dew point is too high; use primary mode | 3) Bent hideg van, de a harmatpont túl magas; elsődleges mód
-				elif self.intemp_avg < lower_int and self.outdewpoint > safe_high:
-					Domoticz.Debug('Indoors cold but dew point high → primary mode | Bent hideg van, de magas a harmatpont → elsődleges mód')
-					self.F_last_mode_state = 0
+				# 0 = heat pump only, 1 = heat pump + boiler, 2 = boiler only | 0 = csak hőszivattyú, 1 = hőszivattyú + kazán, 2 = csak kazán
 
-				# 4) Within hysteresis band: keep current mode | 4) Hiszterézistartomány: megtartjuk az aktuális módot
+				# Dew point protection has priority | A harmatpontvédelem elsőbbséget élvez
+				if self.outtemp <= lower_out:
+					self.F_last_mode_state = 2
+					Domoticz.Debug('Dew point limit reached: heat pump OFF, boiler ON | Harmatpont-határ elérve: hőszivattyú KI, kazán BE')
+
+				elif self.F_last_mode_state == 2 and self.outtemp <= upper_out:
+					Domoticz.Debug('Outdoor temperature within hysteresis band: boiler only | Külső hőmérséklet hiszterézissávban: csak kazán')
+
 				else:
-					Domoticz.Debug(
-						("Within hysteresis band: retain current mode | " + (f"Hiszterézis tartomány → mód tartása: {self.F_last_mode_state}"))
-					)
+					# Heat pump allowed, boiler assistance depends on indoor temperature | Hőszivattyú engedélyezve, kazánrásegítés a belső hőmérséklettől függ
+					if self.intemp_avg < lower_int:
+						self.F_last_mode_state = 1
+						Domoticz.Debug('Indoor temperature low: heat pump + boiler | Alacsony belső hőmérséklet: hőszivattyú + kazán')
 
-				# Switching | Kapcsolás
-				if self.F_last_mode_state == 0:
-					# Primary | Elsődleges
-					if self.operation:
-						self.switchElsodleges_F(True)
+					elif self.intemp_avg > upper_int or self.F_last_mode_state == 2:
+						self.F_last_mode_state = 0
+						Domoticz.Debug('Indoor temperature sufficient: heat pump only | Megfelelő belső hőmérséklet: csak hőszivattyú')
+
 					else:
-						self.switchElsodleges_F(False)
-					self.switchMasodlagos_F(False)
+						Domoticz.Debug('Indoor temperature within hysteresis band: retain assistance state | Belső hőmérséklet hiszterézissávban: rásegítési állapot megtartása')
 
+				Domoticz.Debug(f"Saver 100 selected state: {self.F_last_mode_state} | Saver 100 kiválasztott állapot: {self.F_last_mode_state}")
+
+				# Switching according to heating demand | Kapcsolás a fűtési igény szerint
+				if self.operation:
+					self.switchElsodleges_F(self.F_last_mode_state != 2)
+					self.switchMasodlagos_F(self.F_last_mode_state != 0)
 				else:
-					# Secondary | Másodlagos
 					self.switchElsodleges_F(False)
-					if self.operation:
-						self.switchMasodlagos_F(True)
-					else:
-						self.switchMasodlagos_F(False)
+					self.switchMasodlagos_F(False)
 
 
 			# 110: Switching mode (based on 500 W energy, with hysteresis) | 110: Váltó mód (500W energetika alapján, hiszterézissel)
@@ -11559,33 +11539,36 @@ class BasePlugin:
 		check = False
 
 		if level in [10, 20, 30, 40, 50]:
-			check = self.switchElsodleges_F or self.switchElsodleges_H
+			check = self.f1works or self.h1works
+			Domoticz.Debug(f"check = self.f1works or self.h1works: {check}")
 
 		elif level in [60, 70, 80, 90, 100]:
-			check = self.switchElsodleges_P
+			check = self.p1works
+			Domoticz.Debug(f"check = self.p1works: {check}")
 
 		elif level in [110, 120, 130, 140, 150]:
-			check = self.switchElsodleges_F or self.switchElsodleges_H or self.switchElsodleges_P
+			check = self.f1works or self.h1works or self.p1works
+			Domoticz.Debug(f"check = self.f1works or self.h1works or self.p1works: {check}")
 
+		Domoticz.Debug(f"HMV priority: level={level}, check={check}, dhw_time_run={self.dhw_time_run}, requested={switch}, command={command}")
 
 		if command == "On" and not self.dhw_time_run and check:
 			Domoticz.Debug('OFF due to DHW priority | HMV-prioritás miatt kikapcsolva')
 			command = "Off"
 
-		if command == "On" :
-			Domoticz.Debug('Primary mixing valve switch: ON | Elsődleges keverőszelep-kapcsoló: Be')
+		if command == "On":
+			Domoticz.Debug('Primary valve switch: ON | Elsődleges kapcsoló: Be')
 			self.Elsodleges_M_On = True
-		else :
-			Domoticz.Debug('Primary mixing valve switch: OFF | Elsődleges keverőszelep-kapcsoló: Ki')
+		else:
+			Domoticz.Debug('Primary switch: OFF | Elsődleges kapcsoló: Ki')
 			self.Elsodleges_M_On = False
-		
+
 		Domoticz.Debug("Primary M switching: {0} | Elsődleges M kapcsolás: {0}".format(command))
 
 		for idx in self.Elsodleges_M:
 			self.switchappend(idx,command)
 
 		self.switchstatus(int(Devices[24].ID),command)
-
 
 	def switchMasodlagos_M(self, switch):
 
@@ -11597,15 +11580,15 @@ class BasePlugin:
 
 		if level in [10, 20, 30, 40, 50]:
 			# Heating–cooling: F or H | Fűtés–hűtés: F vagy H
-			check = self.switchMasodlagos_F or self.switchMasodlagos_H
+			check = self.f2works or self.h2works
 
 		elif level in [60, 70, 80, 90, 100]:
 			# Buffer: P | Puffer: P
-			check = self.switchMasodlagos_P
+			check = self.p2works
 
 		elif level in [110, 120, 130, 140, 150]:
 			# Heating–cooling plus buffer: F, H or P | Fűtés–hűtés és puffer: F, H vagy P
-			check = self.switchMasodlagos_F or self.switchMasodlagos_H or self.switchMasodlagos_P
+			check = self.f2works or self.h2works or self.p2works
 
 		if command == "On" and not self.dhw_time_run and check:
 			Domoticz.Debug('Secondary switch OFF due to DHW priority | Másodlagos kapcsoló kikapcsolva HMV-prioritás miatt')
@@ -11628,6 +11611,11 @@ class BasePlugin:
 
 		command = "On" if switch else "Off"
 
+		if command == "On" :
+			self.f1works = True
+		else :
+			self.f1works = False
+
 		if self.dhwprior_F_H and self.Elsodleges_M_On :
 			Domoticz.Debug('Primary_F OFF due to DHW priority | Elsodleges_F kikapcsolva HMV-prioritás miatt')
 			command = "Off"
@@ -11637,17 +11625,17 @@ class BasePlugin:
 		for idx in self.Elsodleges_F:
 			self.switchappend(idx,command)
 
-		if command == "On" :
-			self.f1works = True
-		else :
-			self.f1works = False
-
 		self.switchstatus(Devices[23].ID,command)
 
 
 	def switchMasodlagos_F(self, switch):
 
 		command = "On" if switch else "Off"
+
+		if command == "On" :
+			self.f2works = True
+		else :
+			self.f2works = False
 
 		if self.dhwprior_F_H and self.Masodlagos_M_On :
 			Domoticz.Debug('Secondary_F OFF due to DHW priority | Masodlagos_F kikapcsolva HMV-prioritás miatt')
@@ -11659,17 +11647,17 @@ class BasePlugin:
 		for idx in self.Masodlagos_F:
 			self.switchappend(idx,command)
 
-		if command == "On" :
-			self.f2works = True
-		else :
-			self.f2works = False
-
 		self.switchstatus(int(Devices[26].ID),command)
 
 
 	def switchElsodleges_P_F(self, switch):
 
 		command = "On" if switch else "Off"
+
+		if command == "On" :
+			self.p1works = True
+		else :
+			self.p1works = False
 
 		if self.dhwprior_P and self.Elsodleges_M_On :
 			Domoticz.Debug('Primary_P OFF due to DHW priority | Elsodleges_P kikapcsolva HMV-prioritás miatt')
@@ -11680,16 +11668,16 @@ class BasePlugin:
 		for idx in self.Elsodleges_P_F:
 			self.switchappend(idx,command)
 
-		if command == "On" :
-			self.pworks = True
-		else :
-			self.pworks = False
-
 		self.switchstatus(int(Devices[102].ID),command)
 
 	def switchElsodleges_P_H(self, switch):
 
 		command = "On" if switch else "Off"
+
+		if command == "On" :
+			self.p1works = True
+		else :
+			self.p1works = False
 
 		if self.dhwprior_P and self.Elsodleges_M_On :
 			Domoticz.Debug('Primary_P_H OFF due to DHW priority | Elsodleges_P_H kikapcsolva HMV-prioritás miatt')
@@ -11700,17 +11688,17 @@ class BasePlugin:
 		for idx in self.Elsodleges_P_H:
 			self.switchappend(idx,command)
 
-		if command == "On" :
-			self.pworks = True
-		else :
-			self.pworks = False
-
 		self.switchstatus(int(Devices[102].ID),command)
 
 
 	def switchMasodlagos_P_F(self, switch):
 
 		command = "On" if switch else "Off"
+
+		if command == "On" :
+			self.p2works = True
+		else :
+			self.p2works = False
 
 		if self.dhwprior_P and self.Masodlagos_M_On :
 			Domoticz.Debug('Secondary_P_F OFF due to DHW priority | Masodlagos_P_F kikapcsolva HMV-prioritás miatt')
@@ -11721,16 +11709,16 @@ class BasePlugin:
 		for idx in self.Masodlagos_P_F:
 			self.switchappend(idx,command)
 
-		if command == "On" :
-			self.pworks = True
-		else :
-			self.pworks = False
-
 		self.switchstatus(int(Devices[103].ID),command)
 
 	def switchMasodlagos_P_H(self, switch):
 
 		command = "On" if switch else "Off"
+
+		if command == "On" :
+			self.p2works = True
+		else :
+			self.p2works = False
 
 		if self.dhwprior_P and self.Masodlagos_M_On :
 			Domoticz.Debug('Secondary_P_H OFF due to DHW priority | Masodlagos_P_H kikapcsolva HMV-prioritás miatt')
@@ -11740,11 +11728,6 @@ class BasePlugin:
 
 		for idx in self.Masodlagos_P_H:
 			self.switchappend(idx,command)
-
-		if command == "On" :
-			self.pworks = True
-		else :
-			self.pworks = False
 
 		self.switchstatus(int(Devices[103].ID),command)
 
@@ -11801,6 +11784,11 @@ class BasePlugin:
 
 		command = "On" if switch else "Off"
 
+		if command == "On" :
+			self.h1works = True
+		else :
+			self.h1works = False
+
 		if self.dhwprior_F_H and self.Elsodleges_M_On :
 			Domoticz.Debug('Primary_H OFF due to DHW priority | Elsodleges_H kikapcsolva HMV-prioritás miatt')
 			command = "Off"
@@ -11810,16 +11798,16 @@ class BasePlugin:
 		for idx in self.Elsodleges_H:
 			self.switchappend(idx,command)
 
-		if command == "On" :
-			self.h1works = True
-		else :
-			self.h1works = False
-
 		self.switchstatus(int(Devices[25].ID),command)
 
 	def switchMasodlagos_H(self, switch):
 
 		command = "On" if switch else "Off"
+
+		if command == "On" :
+			self.h2works = True
+		else :
+			self.h2works = False
 
 		if self.dhwprior_F_H and self.Masodlagos_M_On :
 			Domoticz.Debug('Secondary_H OFF due to DHW priority | Masodlagos_H kikapcsolva HMV-prioritás miatt')
