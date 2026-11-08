@@ -29,10 +29,8 @@
 				const settingsUrl = `${proto}${address}:${port.toString()}/json.htm?type=command&param=getsettings`;
 
 				try {
-					const response = await fetch(settingsUrl);
-					if (!response.ok) throw new Error('Network error occurred | Hálózati hiba történt');
-					const data = await response.json();
-					aktlanguage = data.Language;
+					const data = await dsvtGetJson(settingsUrl);
+					aktlanguage = data.Language || 'en';
 				} catch (error) {
 					console.error('Error while retrieving settings | Hiba a beállítások lekérése közben:', error);
 					return {};
@@ -277,6 +275,28 @@
 
 	</style>
 	<script>
+	// Domoticz API compatibility | Domoticz API kompatibilitás
+	async function dsvtGetJson(url, options = {}) {
+		const apiUrl = new URL(url, window.location.origin);
+		const oldCommands = {getsettings:'settings', gethardware:'hardware', getdevices:'devices', graph:'graph', getlightlog:'lightlog'};
+		async function request(target) {
+			const response = await fetch(target, {...options, cache:'no-store'});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const data = await response.json();
+			if (data.status === 'ERR') throw new Error(`Domoticz API ERR: ${target}`);
+			return data;
+		}
+		try {
+			return await request(apiUrl.href);
+		} catch (error) {
+			const command = apiUrl.searchParams.get('param');
+			if (apiUrl.searchParams.get('type') !== 'command' || !oldCommands[command]) throw error;
+			apiUrl.searchParams.set('type', oldCommands[command]);
+			apiUrl.searchParams.delete('param');
+			console.warn('Trying legacy Domoticz API | Régi Domoticz API kipróbálása:', apiUrl.pathname + apiUrl.search);
+			return await request(apiUrl.href);
+		}
+	}
 	var address = window.location.hostname;
 	var port = window.location.port;
 	var proto = window.location.protocol + '//';
@@ -289,18 +309,14 @@
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 5000);
 		try {
-			const hardwareResponse = await fetch(`${window.location.origin}/json.htm?type=command&param=gethardware`, {signal: controller.signal, cache: 'no-store'});
-			if (!hardwareResponse.ok) throw new Error(`Hardware HTTP ${hardwareResponse.status}`);
-			const hardwareData = await hardwareResponse.json();
+			const hardwareData = await dsvtGetJson(`${window.location.origin}/json.htm?type=command&param=gethardware`, {signal: controller.signal});
 			const hardwares = Array.isArray(hardwareData.result) ? hardwareData.result : [];
 			const matchingHardware = hardwares.filter(hw => hw.Extra === 'DSVT_HMV_ZONE_12' && String(hw.idx) === String(hardwareId));
 			if (matchingHardware.length !== 1) {
 				console.warn('DSVT hardware not found by Extra and hardware ID | DSVT hardver nem található Extra és hardverazonosító alapján:', hardwareId);
 				return null;
 			}
-			const deviceResponse = await fetch(`${window.location.origin}/json.htm?type=command&param=getdevices&filter=all&used=all`, {signal: controller.signal, cache: 'no-store'});
-			if (!deviceResponse.ok) throw new Error(`Devices HTTP ${deviceResponse.status}`);
-			const deviceData = await deviceResponse.json();
+			const deviceData = await dsvtGetJson(`${window.location.origin}/json.htm?type=command&param=getdevices&filter=all&used=all`, {signal: controller.signal});
 			const devices = Array.isArray(deviceData.result) ? deviceData.result : [];
 			const matches = devices.filter(device => String(device.HardwareID) === String(hardwareId) && Number(device.Unit) === 87);
 			if (matches.length !== 1) {

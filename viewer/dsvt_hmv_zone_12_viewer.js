@@ -115,12 +115,14 @@ function getRequestPelsodleges(name){
 }
 
 // Load API resources concurrently with a bounded request count | API-adatok párhuzamos betöltése korlátozott kérésszámmal
-function dsvtApi(url) {
-	return new Promise((resolve, reject) => {
-		$.ajax({url: url, dataType: "json", timeout: 15000, cache: false})
-			.done(resolve)
-			.fail((xhr, status, error) => reject(new Error(url + ": " + (error || status))));
-	});
+async function dsvtApi(url) {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15000);
+	try {
+		return await dsvtGetJson(url, {signal:controller.signal});
+	} finally {
+		clearTimeout(timeout);
+	}
 }
 
 async function dsvtRunLimited(tasks, limit) {
@@ -166,7 +168,7 @@ async function getThermostats() {
 	const historyTasks = [];
 
 	for (const hw of hardware) {
-		if (hw.Extra !== "DSVT_HMV_ZONE_12" || String(hw.Enabled).toLowerCase() !== "true") continue;
+		if (hw.Extra !== "DSVT_HMV_ZONE_12" || !["true", "1"].includes(String(hw.Enabled).toLowerCase())) continue;
 		nodata = false;
 		const thermostat = new DSVT_HMV_ZONE_12_Thermostat();
 		thermostat.name = hw.Name;
