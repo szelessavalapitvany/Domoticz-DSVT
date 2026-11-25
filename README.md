@@ -1,6 +1,18 @@
-# DSVT – Smart Heating, Cooling and DHW Control for Domoticz
 
-DSVT is an advanced multi-zone heating, cooling and domestic hot water control system for Domoticz, designed primarily for the automation of existing residential buildings.
+<a id="english"></a>
+
+# DSVT – Predictive Multi-Zone Heating, Cooling and DHW Control for Domoticz
+
+[English](#english) | [Magyar](#magyar)
+
+**Beyond a conventional thermostat: DSVT does not just react – it looks ahead.**
+
+DSVT (Dual Smart Virtual Thermostat) is an open-source, predictive multi-zone heating, cooling and domestic hot water (DHW) control system for Domoticz, designed primarily for retrofitting existing residential buildings.
+
+Two key features address practical problems in modern heating installations:
+
+- **Weather forecast-based predictive control** helps compensate for the thermal inertia of underfloor and other radiant heating systems.
+- **Virtual Hydraulic Separator** helps address insufficient water flow and heat dissipation when zone valves close.
 
 It is not simply a thermostat controller. The system can coordinate multiple heating and cooling zones, multiple heat sources, domestic hot water production, buffer tanks, mixing valves, energy consumption and production, weather data, presence information, and door/window states.
 
@@ -10,12 +22,81 @@ The system is designed to operate locally in an open environment without requiri
 
 ## Main Features
 
+### Predictive heating and cooling control – it looks ahead
+
+Underfloor, wall and other high-thermal-inertia radiant heating systems respond slowly. Even after heating stops, the building structure continues to release stored heat.
+
+A controller that reacts only to the current room temperature may therefore intervene too late, causing overheating or delayed heating during changing weather conditions.
+
+DSVT uses expected outdoor temperature changes from weather forecasts to adjust zone heating and cooling switching thresholds in advance:
+
+- **Before an expected temperature drop:** heating can be requested earlier, allowing the slowly warming surface to deliver heat in time.
+- **Before an expected warm-up:** heating demand can be reduced or stopped earlier to help limit overheating caused by stored heat.
+- **During radiant cooling:** expected outdoor temperature changes can also influence switching decisions, subject to the configured cooling safeguards.
+
+Conventional weather-compensated heating control typically adjusts the supply water temperature according to the currently measured outdoor temperature.
+
+DSVT adds a separate forecast-based compensation of zone switching thresholds, preparing for expected changes rather than relying solely on current conditions.
+
+DSVT does not automatically calculate the thermal inertia of the building or learn a thermal model. Instead, the user can configure how far ahead the controller should take expected temperature changes into account.
+
+This makes it possible to adapt the control strategy to:
+
+- Slow-response underfloor heating
+- Wall and ceiling heating
+- Radiant cooling
+- Faster-response radiator heating
+- Buildings with different thermal characteristics
+
+**The objective is more stable indoor temperatures, reduced overheating and underheating, and less unnecessary energy consumption.**
+
+Actual results depend on the building, the heating system, forecast accuracy and configuration.
+
+### Virtual Hydraulic Separator – minimum water flow and short cycling
+
+Retrofitting an existing heating installation with motorised zone valves or smart thermostatic radiator valves (TRVs) can introduce hydraulic problems.
+
+As individual rooms reach their target temperatures, their valves gradually close. Eventually, only one or two small heating circuits may remain open.
+
+Two related but distinct problems can arise:
+
+- Water flow through the boiler or heat pump may fall below its required minimum.
+- The remaining heat emitters may be unable to dissipate the heat generated at the minimum operating output of the heat source.
+
+This can be particularly problematic with gas boilers that cannot modulate down to a sufficiently low heating output.
+
+Similar problems can occur in heat pump installations, where maintaining the manufacturer's specified minimum water flow rate is an important operating requirement.
+
+Possible consequences include:
+
+- Insufficient water flow
+- Rapid increase in supply water temperature
+- Frequent boiler or heat pump switching
+- Short cycling
+- Overheating-related shutdowns
+- Water flow fault indications
+- Reduced operating efficiency
+- Increased equipment wear
+
+DSVT's **Virtual Hydraulic Separator** is a software-based control function that addresses these problems through coordinated zone valve operation.
+
+When necessary, additional heating circuits can be opened to help maintain sufficient water flow and increase the available heat-emitting surface.
+
+This approach is particularly useful when introducing individual room temperature control into an existing heating installation while retaining the original pipework, boiler and heat emitters.
+
+Additional open circuits may receive heat even when they have no independent heating demand.
+
+**Important:** The Virtual Hydraulic Separator is a software-based control function, not a physical hydraulic separation device. It does not guarantee a measured minimum flow rate or replace proper hydraulic system design, required bypass valves, low-loss headers, buffer tanks or independent equipment safeguards.
+
+The heat source manufacturer's minimum flow, water volume and installation requirements must always be respected.
+
 ### Multi-zone heating and cooling
 
 - Up to 12 independent heating/cooling zones
 - Individual room temperature control
 - Manual selection between heating and cooling mode
 - TRV thermostatic radiator valve control
+- Support for motorised zone valves
 - Support for underfloor heating, radiators, wall heating/cooling and ceiling heating/cooling
 - Automatically calculated target temperatures
 - Door and window opening detection per zone
@@ -32,7 +113,7 @@ DSVT can coordinate multiple heat sources, for example:
 
 The system can coordinate the heat sources according to heat demand and system configuration.
 
-It is especially suitable for hybrid systems, for example when a heat pump is added to an existing gas boiler.
+It is especially suitable for hybrid heating systems, for example when a heat pump is added to an existing gas boiler.
 
 ### Outdoor-temperature-based target temperature
 
@@ -43,7 +124,7 @@ This can be used for:
 - Heating supply target temperature
 - DHW target temperature
 
-Lower target temperatures can be used during milder weather and higher target temperatures during colder conditions, helping the heat pump operate under more favorable conditions.
+Lower target temperatures can be used during milder weather and higher target temperatures during colder conditions, helping the heat pump operate under more favourable conditions.
 
 ### Domestic Hot Water control
 
@@ -110,7 +191,7 @@ The protection run can continue beyond the one-hour start window until its confi
 
 During cooling operation, the system can take the dew point into account.
 
-The purpose is to reduce the risk of condensation when surface cooling is used and to prevent the cooling water temperature from falling below a safe level.
+The purpose is to reduce the risk of condensation when radiant cooling is used and to help prevent the cooling water temperature from falling below a safe level.
 
 ### Health-related cooling limit
 
@@ -124,23 +205,11 @@ Traditional split air-conditioning systems can be integrated into the central co
 
 This allows conventional air conditioners to operate as part of the overall cooling system instead of as isolated devices.
 
-### Look-ahead control
-
-DSVT does not automatically calculate the thermal inertia of the building.
-
-Instead, the user can configure how far ahead the controller should take expected temperature changes into account.
-
-This makes it possible to adapt the control strategy to systems such as:
-
-- Slow-response underfloor heating
-- Faster-response radiator heating
-- Buildings with different thermal characteristics
-
 ### Weather data
 
 DSVT can use weather forecast information as part of its control strategy.
 
-Forecast data can be used for look-ahead control and for estimating future heating or cooling demand.
+Forecast data can be used for predictive control and for anticipating future heating or cooling demand.
 
 The project aims to use an international weather data source that provides at least temperature forecasts worldwide.
 
@@ -173,7 +242,7 @@ This makes it possible to coordinate flexible electrical loads according to fact
 - Available surplus energy
 - Configured power limits
 
-For example, DHW production or other controllable loads can be shifted to more favorable periods.
+For example, DHW production or other controllable loads can be shifted to more favourable periods.
 
 ## Dedicated HTML configuration interface
 
@@ -191,8 +260,8 @@ The interface can be used to configure, among other things:
 - Presence logic
 - Door and window sensors
 - Cooling limits
-- Look-ahead time
-- Other operating and optimization parameters
+- Predictive control and look-ahead time
+- Other operating and optimisation parameters
 
 The goal is to keep configuration understandable even though the underlying control logic is complex.
 
@@ -205,7 +274,7 @@ This can help with:
 - Checking system operation
 - Fine-tuning configuration
 - Identifying problems
-- Optimizing energy use
+- Optimising energy use
 - Understanding control decisions
 
 ## Automatic user interface creation
@@ -222,7 +291,7 @@ These may include:
 - Mixing valve settings
 - Presence status
 - System status
-- Operating and optimization parameters
+- Operating and optimisation parameters
 
 The goal is that after installation the user is not presented with an empty automation platform, but with a usable and preconfigured control interface.
 
@@ -230,9 +299,15 @@ The goal is that after installation the user is not presented with an empty auto
 
 DSVT is designed to operate locally within Domoticz.
 
+- No mandatory cloud service
+- No subscription fees
+- Open-source software
+- No single-vendor ecosystem
+- Locally executed control logic
+
 Heating, cooling and DHW control do not require a permanent cloud connection.
 
-The main control logic runs locally.
+Internet access is required for obtaining updated online weather forecast data.
 
 ## Typical system configuration
 
@@ -242,6 +317,7 @@ A typical DSVT installation may include:
 - Gas boiler
 - Electric immersion heater
 - Multiple heating/cooling zones
+- Motorised zone valves
 - TRVs
 - Underfloor heating
 - Radiators
@@ -263,25 +339,26 @@ DSVT handles these components as parts of one coordinated control system.
 
 ## Intended use
 
-DSVT is primarily designed for automation of existing residential buildings.
+DSVT is primarily designed for the automation and retrofitting of existing residential buildings.
 
 It is especially useful where:
 
+- High-thermal-inertia underfloor or radiant heating systems need predictive compensation
+- Heating systems tend to overheat or respond too slowly to changing weather conditions
+- Retrofitting zone valves creates minimum water flow or short-cycling problems
 - Different heat distribution systems are used
 - Multiple heat sources must be coordinated
 - A heat pump is added to an existing boiler
 - Independent control of multiple rooms is required
 - DHW production must also be automated
-- Surface cooling and air conditioning are used together
+- Radiant cooling and air conditioning are used together
 - Photovoltaic generation is available
 - Local, cloud-independent operation is important
 - The user does not want to build the complete automation logic manually
 
 ## Multi-language support
 
-The system interface and Domoticz devices support multiple languages.
-
-Currently supported languages include:
+The system interface and Domoticz devices support 16 languages:
 
 - Chinese
 - Czech
@@ -315,44 +392,78 @@ Testing on other Linux-based Domoticz systems is welcome.
 
 ## Installation
 
-## Required Domoticz settings before first startup
+### Required Domoticz settings before first startup
 
 Before starting DSVT for the first time, configure the following two settings in Domoticz. Both are necessary for correct operation.
 
-### 1. Set your actual geographic location
+#### 1. Set your actual geographic location
 
 Go to **Setup → Settings → System → Location** and enter the real latitude and longitude of the installation site.
 
-DSVT uses these coordinates for location-dependent weather information and heating/cooling calculations. Missing or incorrect coordinates may produce inaccurate results. Do not rely on the plugin's fallback location for normal operation.
+DSVT uses these coordinates for location-dependent weather information and heating/cooling calculations.
+
+Missing or incorrect coordinates may produce inaccurate results. Do not rely on the plugin's fallback location for normal operation.
 
 ![Domoticz geographic location settings](docs/images/domoticz-location.png)
 
-### 2. Allow local Domoticz API access
+#### 2. Allow local Domoticz API access
 
 Go to **Setup → Settings → Security → Trusted Networks (no username/password)** and add:
 
 `127.0.0.1`
 
-DSVT calls the local Domoticz API to create and update user variables and perform other operations. Without this exception, these requests may return **HTTP 401 Unauthorized**, preventing parts of DSVT from working. Allow only the required loopback address; do not disable authentication for other networks.
+DSVT calls the local Domoticz API to create and update user variables and perform other operations.
+
+Without this exception, these requests may return **HTTP 401 Unauthorized**, preventing parts of DSVT from working.
+
+Allow only the required loopback address; do not disable authentication for other networks.
 
 ![Domoticz local networks API access setting](docs/images/domoticz-local-networks.png)
 
 Save both settings before the first DSVT startup.
+
+### Install the plugin
 
 Clone the repository into the Domoticz plugin directory:
 
 ```sh
 cd /etc/domoticz/plugins
 git clone https://github.com/szelessavalapitvany/Domoticz-DSVT.git DSVT_HMV_ZONE_12
+```
+
+### Install the HTML administration interface
+
+The dedicated HTML administration interface is an important part of DSVT.
+
+Copy the entire contents of the `viewer` directory into the Domoticz `templates` directory:
+
+```sh
 cp -r /etc/domoticz/plugins/DSVT_HMV_ZONE_12/viewer/* /usr/share/domoticz/www/templates/
 ```
 
+This step is required to use the dedicated configuration and graphical administration interface.
+
+### Restart Domoticz
+
+After installation, restart the Domoticz service.
+
+On OpenWrt:
+
+```sh
+/etc/init.d/domoticz restart
+```
 
 ### Configure DSVT using the Custom HTML interface
 
-**Important: First create the DSVT hardware entry in Domoticz with an empty configuration.** Go to **Setup → Hardware**, select **DSVT + HMV (DHW) + 12 ZONE**, enter a name, keep the required Domoticz connection settings (IP address and port) correct, leave the heating/cooling device lists and other optional configuration fields empty, then click **Add**. Do not attempt the detailed setup in this standard hardware form: it is only used to create and start the plugin.
+**Important: First create the DSVT hardware entry in Domoticz with an empty configuration.**
 
-**The DSVT HTML setup becomes available only after the plugin has been added.** Once the hardware entry exists, perform the full heating, cooling, DHW and zone configuration through the dedicated HTML interface under **Custom**.
+Go to **Setup → Hardware**, select **DSVT + HMV (DHW) + 12 ZONE**, enter a name, keep the required Domoticz connection settings (IP address and port) correct, leave the heating/cooling device lists and other optional configuration fields empty, then click **Add**.
+
+Do not attempt the detailed setup in this standard hardware form: it is only used to create and start the plugin.
+
+**The DSVT HTML setup becomes available only after the plugin has been added.**
+
+Once the hardware entry exists, perform the full heating, cooling, DHW and zone configuration through the dedicated HTML interface under **Custom**.
 
 ![Standard Domoticz hardware form — not the full DSVT configuration interface](docs/images/dsvt-html-setup-1.png)
 
@@ -360,22 +471,155 @@ Open **Custom → HTML setup!** to access the DSVT configuration interface.
 
 ![DSVT dedicated HTML configuration interface under Custom](docs/images/dsvt-html-setup-2.png)
 
-**Check user permissions:** The account used to configure DSVT must be allowed to view the **Custom** menu. This access is not enabled by default for every user. If **Custom** is missing, have a Domoticz administrator grant the account the necessary permissions before continuing.
+**Check user permissions:** The account used to configure DSVT must be allowed to view the **Custom** menu.
 
-Detailed information: https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
+This access is not enabled by default for every user. If **Custom** is missing, have a Domoticz administrator grant the account the necessary permissions before continuing.
 
+## Updating the plugin
 
-# DSVT – intelligens fűtés-, hűtés- és HMV-vezérlés Domoticzhoz
+```sh
+cd /etc/domoticz/plugins/DSVT_HMV_ZONE_12
+git pull
+```
 
-A DSVT egy fejlett, többzónás fűtés-, hűtés- és használati melegvíz-vezérlő rendszer Domoticzhoz, amely elsősorban meglévő családi házak automatizálására készült.
+After updating the plugin, copy the contents of the `viewer` directory again, as the administration interface files may also have changed:
+
+```sh
+cp -r viewer/* /usr/share/domoticz/www/templates/
+```
+
+Restart Domoticz:
+
+```sh
+/etc/init.d/domoticz restart
+```
+
+## Documentation
+
+Detailed installation, configuration and operating documentation:
+
+https://www.szelessavmuhely.hu/en/heating_cooling_dhw_buffer
+
+## Project status
+
+The project is being prepared for wider public testing.
+
+The system is already used in OpenWrt and Domoticz environments, but further testing is particularly welcome with:
+
+- Different Domoticz versions
+- Different Linux environments
+- Different heating and cooling installations
+- Different heat source combinations
+- Different countries and language settings
+
+Bug reports, suggestions and test results are welcome through GitHub Issues.
+
+## License
+
+This project is available under the MIT License.
+
+---
+
+<a id="magyar"></a>
+
+# DSVT – előrelátó, többzónás fűtés-, hűtés- és HMV-vezérlés Domoticzhoz
+
+[English](#english) | [Magyar](#magyar)
+
+**Több egy hagyományos termosztátnál: a DSVT nem csak reagál – előre gondolkodik.**
+
+A DSVT (Dual Smart Virtual Thermostat) egy nyílt forráskódú, előrelátó, többzónás fűtés-, hűtés- és használati melegvíz-vezérlő rendszer Domoticzhoz, amely elsősorban meglévő családi házak utólagos korszerűsítésére készült.
+
+A rendszer két kiemelt funkciója a modern fűtési rendszerek gyakorlati problémáira kínál megoldást:
+
+- **Időjárás-előrejelzésen alapuló előrelátó szabályozás:** segít kompenzálni a padlófűtés és más felületfűtési rendszerek nagy hőtehetetlenségét.
+- **Virtuális hidraulikus váltó:** segít kezelni a zónaszelepek lezárásából adódó elégtelen vízáramlást és hőelvezetést.
 
 Nem egyszerű termosztátvezérlésről van szó. A rendszer képes összehangolni több fűtési és hűtési zónát, több hőforrást, a használati melegvíz-készítést, puffertartályt, keverőszelepeket, az energiafogyasztást és -termelést, az időjárási adatokat, a jelenlét-információt, valamint az ajtók és ablakok állapotát.
 
-A cél nem csupán egy vezérlőalgoritmus biztosítása, hanem egy használatra kész automatizálási rendszer létrehozása. A DSVT ezért a szükséges Domoticz-eszközök és kezelőelemek jelentős részét automatikusan létrehozza, és elérhetővé teszi azokat a Domoticz kezdőoldalán.
+A cél nem csupán egy vezérlőalgoritmus biztosítása, hanem egy használatra kész automatizálási rendszer létrehozása.
+
+A DSVT ezért a szükséges Domoticz-eszközök és kezelőelemek jelentős részét automatikusan létrehozza, és elérhetővé teszi azokat a Domoticz kezdőoldalán.
 
 A rendszer helyi működésre készült, nyílt környezetben, anélkül hogy a felhasználónak saját magának kellene felépítenie a teljes vezérlési logikát.
 
 ## Főbb funkciók
+
+### Előrelátó fűtés- és hűtésvezérlés – nem csak reagál, előre gondolkodik
+
+A padló-, fal- és más nagy hőtehetetlenségű felületfűtési rendszerek lassan reagálnak.
+
+A fűtés leállítása után az épületszerkezet még hosszú ideig leadja a korábban eltárolt hőt.
+
+Egy kizárólag az aktuális szobahőmérsékletre reagáló szabályozás ezért könnyen későn avatkozik be, ami változó időjárás esetén túlfűtést vagy átmeneti alulfűtést okozhat.
+
+A DSVT az időjárás-előrejelzés alapján figyelembe veszi a várható külső hőmérséklet-változásokat, és ennek megfelelően előre módosíthatja a zónák fűtési és hűtési kapcsolási küszöbeit.
+
+- **Várható lehűlés előtt:** hamarabb kérhet fűtést, hogy a lassan felmelegedő felület időben hőt tudjon leadni.
+- **Várható felmelegedés előtt:** korábban csökkentheti vagy megszüntetheti a fűtési igényt, hogy az eltárolt hő ne okozzon szükségtelen túlfűtést.
+- **Felülethűtésnél:** a várható külső hőmérséklet-változás szintén figyelembe vehető a kapcsolási döntéseknél, a beállított hűtési védelmek megtartásával.
+
+A hagyományos időjáráskövető szabályozás általában a pillanatnyilag mért külső hőmérséklethez igazítja az előremenő fűtővíz hőmérsékletét.
+
+A DSVT ezen túl a zónák kapcsolási küszöbeit is képes a várható időjárás-változásokhoz igazítani.
+
+Nem kizárólag a jelenlegi állapotot követi, hanem a várható változásokra is felkészülhet.
+
+A DSVT nem számítja automatikusan az épület hőtehetetlenségét, és nem tanul automatikusan termikus modellt.
+
+Ehelyett beállítható, hogy a vezérlés mennyivel előre vegye figyelembe a várható hőmérséklet-változásokat.
+
+Így a működés hozzáigazítható például:
+
+- lassú reakciójú padlófűtéshez
+- fal- és mennyezetfűtéshez
+- felülethűtéshez
+- gyorsabban reagáló radiátoros fűtéshez
+- eltérő termikus tulajdonságú épületekhez
+
+**A cél az egyenletesebb belső hőmérséklet, a túlfűtés és alulfűtés mérséklése, valamint a szükségtelen energiafelhasználás csökkentése.**
+
+A tényleges eredmény az épület, a fűtési rendszer, az időjárás-előrejelzés pontossága és a beállítások függvénye.
+
+### Virtuális hidraulikus váltó – minimális térfogatáram és gyakori kapcsolgatás
+
+Meglévő családi házak fűtési rendszerének utólagos zónásításakor gyakran az eredeti hidraulikai kialakítás megmarad, miközben a korábban folyamatosan nyitott fűtési körök motoros szelepeket vagy intelligens termosztatikus radiátorszelepeket (TRV) kapnak.
+
+Amikor az egyes helyiségek elérik a kívánt hőmérsékletet, a szelepek egymás után lezárnak.
+
+Előfordulhat, hogy végül csak egy vagy két kisebb fűtési kör marad nyitva.
+
+Ilyenkor két, egymással összefüggő, de műszakilag eltérő probléma jelentkezhet:
+
+- A kazánon vagy hőszivattyún átáramló vízmennyiség a szükséges minimális térfogatáram alá csökken.
+- A nyitva maradt fűtési körök nem képesek leadni a hőtermelő minimális teljesítményén megtermelt hőt.
+
+Ez különösen olyan gázkazánoknál jelenthet problémát, amelyek nem képesek kellően alacsony teljesítményre lemodulálni.
+
+Hasonló problémával találkozhatunk hőszivattyús rendszereknél is, ahol a gyártó által előírt minimális térfogatáram fenntartása fontos üzemi követelmény.
+
+Ennek következménye lehet:
+
+- elégtelen vízáramlás
+- az előremenő vízhőmérséklet túl gyors emelkedése
+- a kazán vagy hőszivattyú gyakori ki- és bekapcsolása
+- rövid működési ciklusok
+- túlmelegedés miatti leállás
+- áramlási hibajelzés
+- kedvezőtlenebb hatásfok
+- a berendezések fokozott igénybevétele
+
+A DSVT **virtuális hidraulikus váltó** funkciója ezt a problémát a zónaszelepek összehangolt vezérlésével kezeli.
+
+Szükség esetén további fűtési körök megnyitásával segíthet fenntartani a megfelelő vízáramlást és növelni a megtermelt hő elvezetésére rendelkezésre álló hőleadó felületet.
+
+Ez különösen hasznos lehet meglévő fűtési rendszerek utólagos korszerűsítésekor, amikor a helyiségenkénti szabályozást a meglévő csőhálózat, kazán és hőleadók megtartásával szeretnénk kialakítani.
+
+A kiegészítésként megnyitott fűtési körök akkor is kaphatnak hőt, ha önálló fűtési igényük nincs.
+
+**Fontos:** A virtuális hidraulikus váltó szoftveres vezérlési funkció, nem fizikai hidraulikus leválasztás. Nem garantál méréssel igazolt minimális térfogatáramot, és nem helyettesíti a megfelelő hidraulikai méretezést, az előírt bypass szelepet, hidraulikus váltót, puffertartályt vagy a berendezések független védelmeit.
+
+A hőtermelő gyártójának minimális térfogatáramra, víztérfogatra és telepítésre vonatkozó előírásait minden esetben be kell tartani.
 
 ### Többzónás fűtés és hűtés
 
@@ -383,6 +627,7 @@ A rendszer helyi működésre készült, nyílt környezetben, anélkül hogy a 
 - Helyiségenkénti hőmérséklet-szabályozás
 - Kézzel választható fűtési vagy hűtési üzemmód
 - TRV termosztatikus radiátorszelepek vezérlése
+- Motoros zónaszelepek vezérlése
 - Padlófűtés, radiátoros fűtés, fal- és mennyezetfűtés/hűtés támogatása
 - Automatikusan számított célhőmérsékletek
 - Ajtó- és ablaknyitás érzékelése zónánként
@@ -467,7 +712,7 @@ Ha nincs érvényes hőmérsékleti adat, a fagyvédelem nem ad új kapcsolási 
 A DSVT rendszeres időközönként megjárathatja a kijelölt keringtetőszivattyúkat, így csökkentheti a hosszabb állásból eredő letapadás kockázatát.
 
 - Beállíthatók a kapcsolók (`SV_P`), a hét napja (`SV_D`), az indítás órája (`SV_H`) és a működési idő percben (`SV_M`)
-- A kijelölt héten egyszer indít járatást, az előírt kezdőórától számított egyórás indítási ablakban
+- Hetente egyszer indít járatást, az előírt kezdőórától számított egyórás indítási ablakban
 - A járatás lejárati időpontját eltárolja, így a plugin újraindulása nem okoz ismételt indítást
 - A járatás idején `On`, lejárta után `Off` kapcsolási igényt ad a meglévő vezérléshez; más funkciók `On` igénye elsőbbséget élvez
 
@@ -477,7 +722,7 @@ A járatás az egyórás indítási ablak végén túl is folytatódhat a beáll
 
 Hűtési üzemben a rendszer képes figyelembe venni a harmatpontot.
 
-Ennek célja, hogy felülethűtés esetén csökkentse a páralecsapódás kockázatát, és megakadályozza, hogy a hűtővíz hőmérséklete a biztonságos érték alá csökkenjen.
+Ennek célja, hogy felülethűtés esetén csökkentse a páralecsapódás kockázatát, és segítsen megakadályozni, hogy a hűtővíz hőmérséklete a biztonságos érték alá csökkenjen.
 
 ### Egészségügyi hűtési határérték
 
@@ -491,23 +736,11 @@ Hagyományos split klímaberendezések IR-vezérléssel integrálhatók a közpo
 
 Így a légkondicionálók nem különálló készülékként, hanem a teljes hűtési rendszer részeként működhetnek.
 
-### Előretekintő vezérlés
-
-A DSVT nem számítja automatikusan az épület termikus tehetetlenségét.
-
-Ehelyett beállítható, hogy a vezérlés mennyivel előre vegye figyelembe a várható hőmérséklet-változásokat.
-
-Így a működés hozzáigazítható például:
-
-- lassú reakciójú padlófűtéshez
-- gyorsabban reagáló radiátoros fűtéshez
-- eltérő termikus tulajdonságú épületekhez
-
 ### Időjárási adatok
 
 A DSVT képes időjárás-előrejelzési adatokat felhasználni a vezérlés részeként.
 
-Az előrejelzési adatok felhasználhatók az előretekintő szabályozásban, valamint a várható fűtési vagy hűtési igény becslésében.
+Az előrejelzési adatok felhasználhatók az előrelátó szabályozásban, valamint a várható fűtési vagy hűtési igény előzetes figyelembevételében.
 
 A projekt célja olyan nemzetközi időjárási adatforrás használata, amely világszerte legalább hőmérséklet-előrejelzést biztosít.
 
@@ -527,7 +760,7 @@ A DSVT minden zónában külön képes figyelni az ajtó- és ablakérzékelők 
 
 Nyitott ajtó vagy ablak esetén az érintett helyiség fűtési vagy hűtési igénye figyelmen kívül hagyható.
 
-Ez megakadályozza, hogy a rendszer nyitott ablak mellett próbálja fűteni vagy hűteni a helyiséget.
+Ez segít elkerülni, hogy a rendszer nyitott ablak mellett próbálja fűteni vagy hűteni a helyiséget.
 
 ### Energiafogyasztás és energiatermelés figyelése
 
@@ -558,7 +791,7 @@ Ezen többek között az alábbiak konfigurálhatók:
 - jelenléti logika
 - ajtó- és ablakérzékelők
 - hűtési határértékek
-- előretekintési idő
+- előrelátó szabályozás és előretekintési idő
 - egyéb működési és optimalizálási paraméterek
 
 A cél az, hogy az összetett vezérlési logika ellenére a rendszer konfigurációja átlátható maradjon.
@@ -597,9 +830,15 @@ A cél az, hogy a telepítés után a felhasználó ne egy üres automatizálás
 
 A DSVT helyi működésre készült Domoticz környezetben.
 
+- Nincs kötelező gyártói felhő
+- Nincs havidíj
+- Nyílt forráskódú szoftver
+- Nem kötődik egyetlen gyártóhoz
+- A vezérlési logika helyben fut
+
 A fűtés-, hűtés- és HMV-vezérlés nem igényel állandó felhőkapcsolatot.
 
-A rendszer fő vezérlési logikája helyben fut.
+Az online időjárás-előrejelzési adatok frissítéséhez internetkapcsolat szükséges.
 
 ## Tipikus rendszerfelépítés
 
@@ -609,6 +848,7 @@ Egy tipikus DSVT rendszer például az alábbi elemekből állhat:
 - gázkazán
 - elektromos fűtőpatron
 - több fűtési/hűtési zóna
+- motoros zónaszelepek
 - TRV szelepek
 - padlófűtés
 - radiátorok
@@ -630,10 +870,13 @@ A DSVT ezeket nem különálló eszközökként, hanem egyetlen összehangolt ve
 
 ## Mire készült?
 
-A DSVT elsősorban meglévő családi házak automatizálására készült.
+A DSVT elsősorban meglévő családi házak automatizálására és utólagos korszerűsítésére készült.
 
 Különösen hasznos olyan rendszereknél, ahol:
 
+- nagy hőtehetetlenségű padlófűtés vagy más felületfűtés előrelátó szabályozása szükséges
+- a fűtés hajlamos túlfűteni vagy késve reagálni az időjárás-változásokra
+- az utólagos zónásítás minimális térfogatáram-problémát vagy gyakori kapcsolgatást okoz
 - többféle hőleadó rendszer működik
 - több hőforrást kell összehangolni
 - meglévő kazán mellé hőszivattyú kerül
@@ -646,9 +889,7 @@ Különösen hasznos olyan rendszereknél, ahol:
 
 ## Többnyelvű támogatás
 
-A rendszer kezelőfelülete és a Domoticzban létrehozott eszközök több nyelvet támogatnak.
-
-Jelenleg támogatott nyelvek:
+A rendszer kezelőfelülete és a Domoticzban létrehozott eszközök 16 nyelvet támogatnak:
 
 - angol
 - cseh
@@ -674,7 +915,7 @@ A rendszer a Domoticzban beállított nyelv alapján képes létrehozni az eszk�
 - Domoticz 2023.2 vagy frissebb
 - Python plugin támogatás
 - kompatibilis hőmérséklet-, páratartalom- és egyéb érzékelők
-- az adott HVAC rendszerhez megfelelő kapcsoló- és szabályozóeszközök
+- az adott fűtési és hűtési rendszerhez megfelelő kapcsoló- és szabályozóeszközök
 
 A rendszer eddig elsősorban OpenWrt környezetben lett tesztelve és használva.
 
@@ -690,7 +931,9 @@ A DSVT első indítása előtt a Domoticzban az alábbi két beállítást el ke
 
 A **Setup → Settings → System → Location** menüpontban add meg a telepítés helyének valós földrajzi szélességét és hosszúságát.
 
-A DSVT ezeket használja a helyfüggő időjárási adatokhoz és a fűtési/hűtési számításokhoz. Hiányzó vagy pontatlan koordináták esetén a számítások hibásak lehetnek. Normál használat során ne hagyatkozz a program tartalék koordinátáira.
+A DSVT ezeket használja a helyfüggő időjárási adatokhoz és a fűtési/hűtési számításokhoz.
+
+Hiányzó vagy pontatlan koordináták esetén a számítások hibásak lehetnek. Normál használat során ne hagyatkozz a program tartalék koordinátáira.
 
 ![Földrajzi koordináták beállítása a Domoticzban](docs/images/domoticz-location.png)
 
@@ -700,11 +943,17 @@ A **Setup → Settings → Security → Trusted Networks (no username/password)*
 
 `127.0.0.1`
 
-A DSVT a helyi Domoticz API-n keresztül hozza létre és frissíti többek között a felhasználói változókat. A fenti engedély nélkül a kérések **HTTP 401 Unauthorized** hibával elutasításra kerülhetnek, így a rendszer bizonyos funkciói nem működnek. Csak a szükséges helyi címet engedélyezd, más hálózatoknál ne kapcsold ki a hitelesítést.
+A DSVT a helyi Domoticz API-n keresztül hozza létre és frissíti többek között a felhasználói változókat.
+
+A fenti engedély nélkül a kérések **HTTP 401 Unauthorized** hibával elutasításra kerülhetnek, így a rendszer bizonyos funkciói nem működnek.
+
+Csak a szükséges helyi címet engedélyezd, más hálózatoknál ne kapcsold ki a hitelesítést.
 
 ![A helyi API-hozzáférés engedélyezése a Domoticzban](docs/images/domoticz-local-networks.png)
 
 Mindkét beállítást mentsd el, mielőtt először elindítod a DSVT-t.
+
+### A plugin telepítése
 
 A repository-t a Domoticz plugin könyvtárába kell klónozni:
 
@@ -735,13 +984,17 @@ OpenWrt alatt:
 /etc/init.d/domoticz restart
 ```
 
-
-
 ### A DSVT beállítása a Custom menü HTML-felületén
 
-**Fontos: először a DSVT plugint üres konfigurációval létre kell hozni a Domoticzban!** A **Setup → Hardware** oldalon válaszd ki a **DSVT + HMV (DHW) + 12 ZONE** típust, adj nevet, ellenőrizd a Domoticz csatlakozási adatokat (IP-cím, port), a fűtési/hűtési eszközlistákat és a többi opcionális konfigurációs mezőt hagyd üresen, majd kattints az **Add** gombra. A részletes beállításokat ne ezen a hagyományos hardverűrlapon próbáld elvégezni: itt csak létrehozzuk és elindítjuk a plugint.
+**Fontos: először a DSVT plugint üres konfigurációval létre kell hozni a Domoticzban!**
 
-**A DSVT HTML setup felülete csak a plugin létrehozása után válik elérhetővé.** Ezután a fűtés, hűtés, HMV és a zónák részletes konfigurációját a **Custom** menüben kell elvégezni.
+A **Setup → Hardware** oldalon válaszd ki a **DSVT + HMV (DHW) + 12 ZONE** típust, adj nevet, ellenőrizd a Domoticz csatlakozási adatokat (IP-cím, port), a fűtési/hűtési eszközlistákat és a többi opcionális konfigurációs mezőt hagyd üresen, majd kattints az **Add** gombra.
+
+A részletes beállításokat ne ezen a hagyományos hardverűrlapon próbáld elvégezni: itt csak létrehozzuk és elindítjuk a plugint.
+
+**A DSVT HTML setup felülete csak a plugin létrehozása után válik elérhetővé.**
+
+Ezután a fűtés, hűtés, HMV és a zónák részletes konfigurációját a **Custom** menüben kell elvégezni.
 
 ![A Domoticz alap hardverbeállítási oldala — nem a teljes DSVT-konfiguráció](docs/images/dsvt-html-setup-1.png)
 
@@ -749,7 +1002,11 @@ A részletes konfigurációhoz nyisd meg a **Custom → HTML setup!** menüponto
 
 ![A DSVT saját HTML-konfigurációs felülete a Custom menüben](docs/images/dsvt-html-setup-2.png)
 
-**Ellenőrizd a jogosultságokat!** A DSVT-t konfiguráló felhasználónak rendelkeznie kell a **Custom** menü megtekintéséhez szükséges jogosultsággal. Ez alapértelmezés szerint nem minden felhasználó számára engedélyezett. Ha a **Custom** menü nem jelenik meg, a Domoticz rendszergazdájával engedélyeztetni kell a megfelelő hozzáférést.
+**Ellenőrizd a jogosultságokat!**
+
+A DSVT-t konfiguráló felhasználónak rendelkeznie kell a **Custom** menü megtekintéséhez szükséges jogosultsággal.
+
+Ez alapértelmezés szerint nem minden felhasználó számára engedélyezett. Ha a **Custom** menü nem jelenik meg, a Domoticz rendszergazdájával engedélyeztetni kell a megfelelő hozzáférést.
 
 ## Frissítés
 
@@ -759,7 +1016,6 @@ A plugin frissítéséhez:
 cd /etc/domoticz/plugins/DSVT_HMV_ZONE_12
 git pull
 ```
-
 
 A `viewer` könyvtár tartalmát frissítés után is újra át kell másolni, mert az adminisztrációs felület fájljai is változhatnak:
 
@@ -773,7 +1029,6 @@ Ezután újra kell indítani a Domoticz szolgáltatást:
 /etc/init.d/domoticz restart
 ```
 
-
 ## Beállítás és konfiguráció
 
 A rendszer részletes beállítási, konfigurációs és működési dokumentációja itt található:
@@ -782,9 +1037,9 @@ https://www.szelessavmuhely.hu/hu/futes_hutes_hmv_puffer
 
 ## Projekt állapota
 
-A projekt jelenleg nyilvános tesztelésre készül.
+A projekt jelenleg szélesebb körű nyilvános tesztelésre készül.
 
-A rendszer OpenWrt + Domoticz környezetben már használatban van, de a szélesebb körű és nemzetközi kiadás előtt különösen hasznos a tesztelés:
+A rendszer OpenWrt + Domoticz környezetben már használatban van, de különösen hasznos a további tesztelés:
 
 - különböző Domoticz verziókkal
 - különböző Linux környezetekben
