@@ -8136,7 +8136,7 @@ class BasePlugin:
 			pH = []
 			power =[]
 			if self.solar_puffer_limit != 0 and int(p1_meter_actual) > int(self.solar_puffer_limit) :
-				power.append(self.solar_dhw_limit)
+				power.append(self.solar_puffer_limit)
 				pC.append(float(Devices[94].sValue))
 				pH.append(float(Devices[96].sValue))
 				
@@ -8160,7 +8160,7 @@ class BasePlugin:
 			self.P_celhomerseklet = max(pC)
 			self.P_hiszterezis = min(pH)
 			Devices[100].Update(nValue=0, sValue=str(self.P_celhomerseklet), TimedOut=False)
-			self.Internals['power_dhw_consumption'] = max(power)
+			self.Internals['power_buffer_consumption'] = max(power)
 			saveUserVar(self)
 
 		else :
@@ -8168,7 +8168,7 @@ class BasePlugin:
 			pH = []
 			power =[]
 			if self.solar_puffer_limit != 0 and int(p1_meter_actual) > int(self.solar_puffer_limit) :
-				power.append(self.solar_dhw_limit)
+				power.append(self.solar_puffer_limit)
 				pC.append(float(Devices[93].sValue))
 				pH.append(float(Devices[96].sValue))
 
@@ -8186,7 +8186,7 @@ class BasePlugin:
 			pC.append(float(Devices[91].sValue))
 			pH.append(float(Devices[123].sValue))
 			
-			pC_max = max(pC)
+			pC_max = min(pC)
 
 			if pC_max > self.buffer_max :
 				self.P_celhomerseklet = self.buffer_max
